@@ -54,3 +54,19 @@ If you want to learn more about building native executables, please consult http
 Easily start your Reactive RESTful Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+
+# Running
+
+Specific MySQL example:
+
+Requirements:
+
+1. Running MySQL instance;
+2. Update connection properties in Main.java.
+
+Setup:
+
+1. Run the SQL script in `resources/setup.sql`;
+
+Run the `Main.java`, operating in the customer table should publish events.
+To exit, press enter in the terminal running the application, so the offset is flushed.
