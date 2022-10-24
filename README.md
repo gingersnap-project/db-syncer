@@ -55,18 +55,15 @@ Easily start your Reactive RESTful Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
 
-# Running
-
-Specific MySQL example:
+# Running with MySQL
 
 Requirements:
 
-1. Running MySQL instance;
-2. Update connection properties in Main.java.
-
-Setup:
-
-1. Run the SQL script in `resources/setup.sql`;
-
-Run the `Main.java`, operating in the customer table should publish events.
-To exit, press enter in the terminal running the application, so the offset is flushed.
+##. Make sure docker is running and you have docker-compose available
+##. Run `docker-compose -f src/main/resources/mysql.yml up` to start mysql exposed on 3306 and adminer on 8090
+  Adminer can be looked at via a browser at localhost:8090 as an administration tool. Login is user: root, password: root. You may need to refresh the schema to see the debezium one.
+##. Run `docker exex -i <container id> mysql -uroot -proot < src/main/resources/setup.sql` to create the debezium schema, two tables and give permissions to the gingersnap user
+##. Run `quarkus dev` from the poc base directory.
+  This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005.
+##. Perform inserts and updates to the database (example sql file to come)
+  To exit, press q in the terminal running the application, so the offset is flushed.
