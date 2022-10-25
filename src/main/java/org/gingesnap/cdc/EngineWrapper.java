@@ -8,20 +8,27 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
-import io.debezium.engine.ChangeEvent;
-import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.format.Json;
-import io.debezium.storage.file.history.FileSchemaHistory;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
 import org.gingesnap.cdc.consumer.BatchConsumer;
 import org.infinispan.client.hotrod.RemoteCache;
 
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.format.Json;
+import io.debezium.storage.file.history.FileSchemaHistory;
+
 public class EngineWrapper {
 
-   private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+   private static final ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+      @Override
+      public Thread newThread(Runnable runnable) {
+         return new Thread(runnable, "engine");
+      }
+   });
    private final DebeziumEngine<ChangeEvent<String, String>> engine;
 
    private EngineWrapper(Properties properties, RemoteCache<String, String> cache) {
