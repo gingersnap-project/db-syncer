@@ -2,13 +2,21 @@ package org.gingesnap.cdc.consumer;
 
 import java.util.List;
 
-import io.debezium.engine.ChangeEvent;
-import io.debezium.engine.DebeziumEngine;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.commons.dataconversion.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine;
+
 public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>> {
    private static final Logger log = LoggerFactory.getLogger(BatchConsumer.class);
+   private final RemoteCache<String, String> cache;
+
+   public BatchConsumer(RemoteCache<String, String> cache) {
+      this.cache = cache;
+   }
 
    @Override
    public void handleBatch(List<ChangeEvent<String, String>> batch, DebeziumEngine.RecordCommitter<ChangeEvent<String, String>> recordCommitter) throws InterruptedException {
@@ -28,5 +36,20 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
       log.info("Received event...");
       log.info("KEY -> {}", event.key());
       log.info("VALUE -> {}", event.value());
+
+      Json jsonObject = Json.read(event.value());
+      Json jsonPayload = jsonObject.at("payload");
+
+      Json jsonBefore = jsonPayload.at("before");
+      Json jsonAfter = jsonPayload.at("after");
+
+      log.info("BEFORE -> {}", jsonBefore);
+      log.info("AFTER -> {}", jsonAfter);
+
+      if (jsonAfter == null || jsonAfter.isNull()) {
+         cache.remove(jsonBefore.at("id").toString());
+      } else {
+         cache.put(jsonAfter.at("id").toString(), jsonAfter.toString());
+      }
    }
 }
