@@ -4,15 +4,16 @@ import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig
 import static io.debezium.storage.file.history.FileSchemaHistory.FILE_PATH;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
 import org.gingesnap.cdc.consumer.BatchConsumer;
+import org.gingesnap.cdc.remote.RemoteOffsetStore;
 
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
@@ -34,10 +35,10 @@ public class EngineWrapper {
    }
 
    public EngineWrapper(Connector connector, Database database, CacheBackend cache) {
-      this(defaultProperties(connector, database), cache);
+      this(defaultProperties(connector, database, cache.uriUsed()), cache);
    }
 
-   private static Properties defaultProperties(Connector connector, Database database) {
+   private static Properties defaultProperties(Connector connector, Database database, URI uriToUse) {
       Properties props = new Properties();
       props.setProperty("name", "engine");
       props.put("connector.class", connector.connector());
@@ -71,8 +72,8 @@ public class EngineWrapper {
       /*props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
       props.setProperty(SCHEMA_HISTORY.name(), RemoteSchemaHistory.class.getCanonicalName());*/
 
-      props.setProperty("offset.storage", FileOffsetBackingStore.class.getCanonicalName());
-      props.setProperty("offset.storage.file.filename", "/tmp/offset.dat");
+      props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
+      props.setProperty(RemoteOffsetStore.URI_CACHE, uriToUse.toString());
       props.setProperty(SCHEMA_HISTORY.name(), FileSchemaHistory.class.getCanonicalName());
       props.setProperty(FILE_PATH.name(), "/tmp/schema.dat");
 
