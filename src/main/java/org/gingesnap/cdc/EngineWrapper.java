@@ -18,6 +18,7 @@ import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
 import org.gingesnap.cdc.consumer.BatchConsumer;
+import org.infinispan.client.hotrod.RemoteCache;
 
 public class EngineWrapper {
 
@@ -29,15 +30,15 @@ public class EngineWrapper {
    private static final String USER_PASSWD = "root";
    private final DebeziumEngine<ChangeEvent<String, String>> engine;
 
-   private EngineWrapper(Properties properties) {
+   private EngineWrapper(Properties properties, RemoteCache<String, String> cache) {
       engine = DebeziumEngine.create(Json.class)
             .using(properties)
-            .notifying(new BatchConsumer())
+            .notifying(new BatchConsumer(cache))
             .build();
    }
 
-   public EngineWrapper(Connector connector, Database database) {
-      this(defaultProperties(connector, database));
+   public EngineWrapper(Connector connector, Database database, RemoteCache<String, String> cache) {
+      this(defaultProperties(connector, database), cache);
    }
 
    private static Properties defaultProperties(Connector connector, Database database) {
