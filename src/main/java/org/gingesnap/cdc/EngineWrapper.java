@@ -8,13 +8,11 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
 import org.gingesnap.cdc.consumer.BatchConsumer;
-import org.infinispan.client.hotrod.RemoteCache;
 
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
@@ -23,15 +21,11 @@ import io.debezium.storage.file.history.FileSchemaHistory;
 
 public class EngineWrapper {
 
-   private static final ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
-      @Override
-      public Thread newThread(Runnable runnable) {
-         return new Thread(runnable, "engine");
-      }
-   });
+   private static final ExecutorService executor = Executors.newSingleThreadExecutor(runnable ->
+         new Thread(runnable, "engine"));
    private final DebeziumEngine<ChangeEvent<String, String>> engine;
 
-   private EngineWrapper(Properties properties, RemoteCache<String, String> cache) {
+   private EngineWrapper(Properties properties, CacheBackend cache) {
       engine = DebeziumEngine.create(Json.class)
             .using(properties)
             .using(this.getClass().getClassLoader())
@@ -39,7 +33,7 @@ public class EngineWrapper {
             .build();
    }
 
-   public EngineWrapper(Connector connector, Database database, RemoteCache<String, String> cache) {
+   public EngineWrapper(Connector connector, Database database, CacheBackend cache) {
       this(defaultProperties(connector, database), cache);
    }
 

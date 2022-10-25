@@ -2,7 +2,7 @@ package org.gingesnap.cdc.consumer;
 
 import java.util.List;
 
-import org.infinispan.client.hotrod.RemoteCache;
+import org.gingesnap.cdc.CacheBackend;
 import org.infinispan.commons.dataconversion.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +12,9 @@ import io.debezium.engine.DebeziumEngine;
 
 public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>> {
    private static final Logger log = LoggerFactory.getLogger(BatchConsumer.class);
-   private final RemoteCache<String, String> cache;
+   private final CacheBackend cache;
 
-   public BatchConsumer(RemoteCache<String, String> cache) {
+   public BatchConsumer(CacheBackend cache) {
       this.cache = cache;
    }
 
@@ -45,13 +45,14 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
 
       log.info("BEFORE -> {}", jsonBefore);
       log.info("AFTER -> {}", jsonAfter);
-      switch (jsonPayload.at("op").asString()) {
+      String op = jsonPayload.at("op").asString();
+      switch (op) {
          case "c":
          case "u":
-            cache.put(jsonAfter.at("id").toString(), jsonAfter.toString());
+            cache.put(jsonAfter.at("id").asString(), jsonAfter);
             break;
          case "d":
-            cache.remove(jsonBefore.at("id").toString());
+            cache.remove(jsonBefore.at("id").asString());
             break;
          default:
             log.info("Unrecognized operation [{}] for {}", jsonPayload.at("op"), jsonPayload);
