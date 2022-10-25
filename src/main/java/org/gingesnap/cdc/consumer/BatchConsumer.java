@@ -45,11 +45,16 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
 
       log.info("BEFORE -> {}", jsonBefore);
       log.info("AFTER -> {}", jsonAfter);
-
-      if (jsonAfter == null || jsonAfter.isNull()) {
-         cache.remove(jsonBefore.at("id").toString());
-      } else {
-         cache.put(jsonAfter.at("id").toString(), jsonAfter.toString());
+      switch (jsonPayload.at("op").asString()) {
+         case "c":
+         case "u":
+            cache.put(jsonAfter.at("id").toString(), jsonAfter.toString());
+            break;
+         case "d":
+            cache.remove(jsonBefore.at("id").toString());
+            break;
+         default:
+            log.info("Unrecognized operation [{}] for {}", jsonPayload.at("op"), jsonPayload);
       }
    }
 }

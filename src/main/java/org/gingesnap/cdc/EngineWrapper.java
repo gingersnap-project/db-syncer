@@ -9,7 +9,6 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
@@ -23,16 +22,12 @@ import org.infinispan.client.hotrod.RemoteCache;
 public class EngineWrapper {
 
    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
-   private static final String TOPIC_PREFIX = "gingersnap";
-   private static final String DATABASE_NAME = "debezium";
-   private static final String TABLE_NAME = "customer";
-   private static final String USER_NAME = "gingersnap_user";
-   private static final String USER_PASSWD = "root";
    private final DebeziumEngine<ChangeEvent<String, String>> engine;
 
    private EngineWrapper(Properties properties, RemoteCache<String, String> cache) {
       engine = DebeziumEngine.create(Json.class)
             .using(properties)
+            .using(this.getClass().getClassLoader())
             .notifying(new BatchConsumer(cache))
             .build();
    }

@@ -67,5 +67,6 @@ Requirements:
   Server console is available at localhost:11222
 ##. Run `quarkus dev` from the poc base directory.
   This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`
-##. Perform inserts and updates to the database (example sql file to come)
+##. Perform inserts and updates to the database
+  Running `docker exec -i <container id> mysql -uroot -proot < src/main/resources/populate.sql` will execute some operations in the database.
   To exit, press q in the terminal running the application, so the offset is flushed.
