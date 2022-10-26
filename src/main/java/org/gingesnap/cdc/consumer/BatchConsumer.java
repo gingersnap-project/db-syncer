@@ -47,10 +47,15 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
       log.info("AFTER -> {}", jsonAfter);
       String op = jsonPayload.at("op").asString();
       switch (op) {
+         //create
          case "c":
+         // update
          case "u":
+         // snapshot
+         case "r":
             cache.put(jsonAfter.at("id").asString(), jsonAfter);
             break;
+         //delete
          case "d":
             cache.remove(jsonBefore.at("id").asString());
             break;
