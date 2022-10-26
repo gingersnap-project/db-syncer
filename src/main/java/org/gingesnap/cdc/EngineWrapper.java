@@ -1,7 +1,6 @@
 package org.gingesnap.cdc;
 
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY;
-import static io.debezium.storage.file.history.FileSchemaHistory.FILE_PATH;
 
 import java.io.IOException;
 import java.net.URI;
@@ -14,11 +13,11 @@ import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
 import org.gingesnap.cdc.consumer.BatchConsumer;
 import org.gingesnap.cdc.remote.RemoteOffsetStore;
+import org.gingesnap.cdc.remote.RemoteSchemaHistory;
 
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
-import io.debezium.storage.file.history.FileSchemaHistory;
 
 public class EngineWrapper {
 
@@ -69,14 +68,11 @@ public class EngineWrapper {
             // The value is from table 'customer' and is something with `topic.prefix`.`database.dbname`.table configuration.
             "value.source.table == 'customer' && valueSchema.name ==~ " + schemaRegex);
 
-      /*props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
-      props.setProperty(SCHEMA_HISTORY.name(), RemoteSchemaHistory.class.getCanonicalName());*/
-
-      props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
       props.setProperty(RemoteOffsetStore.URI_CACHE, uriToUse.toString());
+      props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
       props.setProperty("offset.flush.interval.ms", "60000");
-      props.setProperty(SCHEMA_HISTORY.name(), FileSchemaHistory.class.getCanonicalName());
-      props.setProperty(FILE_PATH.name(), "/tmp/schema.dat");
+      props.setProperty(RemoteSchemaHistory.URI_CACHE, uriToUse.toString());
+      props.setProperty(SCHEMA_HISTORY.name(), RemoteSchemaHistory.class.getCanonicalName());
 
       return props;
    }

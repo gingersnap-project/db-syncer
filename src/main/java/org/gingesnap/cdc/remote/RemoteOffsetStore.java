@@ -23,7 +23,6 @@ public class RemoteOffsetStore implements OffsetBackingStore {
 
    private OffsetBackend offsetBackend;
 
-
    @Override
    public void start() {
       log.info("Starting remote offset store");
