@@ -74,6 +74,7 @@ public class EngineWrapper {
 
       props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
       props.setProperty(RemoteOffsetStore.URI_CACHE, uriToUse.toString());
+      props.setProperty("offset.flush.interval.ms", "60000");
       props.setProperty(SCHEMA_HISTORY.name(), FileSchemaHistory.class.getCanonicalName());
       props.setProperty(FILE_PATH.name(), "/tmp/schema.dat");
 
