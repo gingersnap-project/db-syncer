@@ -59,14 +59,14 @@ Easily start your Reactive RESTful Web Services
 
 Requirements:
 
-##. Make sure docker is running and you have docker-compose available
-##. Run `docker-compose -f src/main/resources/mysql.yml up` to start mysql exposed on 3306 and adminer on 8090
+1. Make sure docker is running and you have docker-compose available
+2. Run `docker-compose -f src/main/resources/mysql.yml up` to start mysql exposed on 3306 and adminer on 8090
   Adminer can be looked at via a browser at localhost:8090 as an administration tool. Login is user: root, password: root. You may need to refresh the schema to see the debezium one.
-##. Run `docker exec -i <container id> mysql -uroot -proot < src/main/resources/setup.sql` to create the debezium schema, two tables and give permissions to the gingersnap user
-##. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
+3. Run `docker exec -i <container id> mysql -uroot -proot < src/main/resources/setup.sql` to create the debezium schema, two tables and give permissions to the gingersnap user
+4. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
   Server console is available at localhost:11222
-##. Run `quarkus dev` from the poc base directory.
+5. Run `quarkus dev` from the poc base directory.
   This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`
-##. Perform inserts and updates to the database
+6. Perform inserts and updates to the database
   Running `docker exec -i <container id> mysql -uroot -proot < src/main/resources/populate.sql` will execute some operations in the database.
   To exit, press q in the terminal running the application, so the offset is flushed.
