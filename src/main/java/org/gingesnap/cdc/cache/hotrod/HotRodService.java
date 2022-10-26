@@ -9,8 +9,11 @@ import javax.inject.Singleton;
 
 import org.gingesnap.cdc.CacheBackend;
 import org.gingesnap.cdc.OffsetBackend;
+import org.gingesnap.cdc.SchemaBackend;
 import org.gingesnap.cdc.cache.CacheService;
 import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
+import org.infinispan.client.hotrod.multimap.RemoteMultimapCacheManagerFactory;
 import org.infinispan.commons.configuration.XMLStringConfiguration;
 import org.infinispan.commons.dataconversion.MediaType;
 
@@ -43,11 +46,29 @@ public class HotRodService implements CacheService {
          return null;
       }
       RemoteCacheManager remoteCacheManager = otherURIs.computeIfAbsent(uri, RemoteCacheManager::new);
-      return new HotRodOffsetBackend(remoteCacheManager.administration().getOrCreateCache("debezium-offset",
-            new XMLStringConfiguration(
-                  "<distributed-cache>" +
-                        "<encoding media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
-                        "</distributed-cache>")));
+      return new HotRodOffsetBackend(remoteCacheManager.administration()
+            .getOrCreateCache("debezium-offset", new XMLStringConfiguration(
+                  "<replicated-cache>" +
+                     "<encoding media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
+                  "</replicated-cache>")));
+   }
+
+   @Override
+   public SchemaBackend schemaBackendForURI(URI uri) {
+      if (!uri.getScheme().startsWith("hotrod")) {
+         return null;
+      }
+      String multiMapCacheName = "debezium-schema";
+      RemoteCacheManager remoteCacheManager = otherURIs.computeIfAbsent(uri, RemoteCacheManager::new);
+      remoteCacheManager.administration().getOrCreateCache(multiMapCacheName, new XMLStringConfiguration(
+                  "<replicated-cache>" +
+                     "<encoding>" +
+                        "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
+                        "<value media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
+                     "</encoding>" +
+                  "</replicated-cache>"));
+      MultimapCacheManager<String, String> remoteMultimapCacheManager = RemoteMultimapCacheManagerFactory.from(remoteCacheManager);
+      return new HotRodSchemaBackend(remoteMultimapCacheManager.get(multiMapCacheName));
    }
 
    @Override
