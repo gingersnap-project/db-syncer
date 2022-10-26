@@ -1,8 +1,8 @@
 package org.gingesnap.cdc.configuration;
 
-import io.smallrye.config.ConfigMapping;
+import io.quarkus.runtime.annotations.ConfigGroup;
 
-@ConfigMapping(prefix = "connector")
+@ConfigGroup
 public interface Connector {
 
    String connector();
