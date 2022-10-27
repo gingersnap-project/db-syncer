@@ -7,8 +7,6 @@ public interface Connector {
 
    String connector();
 
-   String topic();
-
    String schema();
 
    String table();

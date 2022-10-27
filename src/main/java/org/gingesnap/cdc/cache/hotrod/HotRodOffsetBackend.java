@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -28,13 +29,13 @@ public class HotRodOffsetBackend implements OffsetBackend {
    }
 
    @Override
-   public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
+   public CompletionStage<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
       return remoteCache.getAllAsync(collection.stream().map(HotRodOffsetBackend::byteBufferToByteArray).collect(Collectors.toSet()))
             .thenApply(map -> map.entrySet().stream().collect(Collectors.toMap(e -> ByteBuffer.wrap(e.getKey()), e -> ByteBuffer.wrap(e.getValue()))));
    }
 
    @Override
-   public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
+   public CompletionStage<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
       CompletableFuture<Void> future = remoteCache.putAllAsync(map.entrySet().stream().collect(Collectors.toMap(e -> HotRodOffsetBackend.byteBufferToByteArray(e.getKey()),
             e -> HotRodOffsetBackend.byteBufferToByteArray(e.getValue()))));
       return future.whenComplete((v, t) -> callback.onCompletion(t, v));

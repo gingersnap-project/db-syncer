@@ -1,11 +1,13 @@
 package org.gingesnap.cdc.cache.hotrod;
 
 import java.net.URI;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import org.gingesnap.cdc.CacheBackend;
 import org.infinispan.client.hotrod.DataFormat;
 import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.impl.InternalRemoteCache;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.commons.dataconversion.internal.Json;
 
