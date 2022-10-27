@@ -1,5 +1,7 @@
 package org.gingesnap.cdc.configuration;
 
+import java.util.Optional;
+
 import io.quarkus.runtime.annotations.ConfigGroup;
 
 @ConfigGroup
@@ -12,4 +14,6 @@ public interface Database {
    String user();
 
    String password();
+
+   Optional<String> database();
 }

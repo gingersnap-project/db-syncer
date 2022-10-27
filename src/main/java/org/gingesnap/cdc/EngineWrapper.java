@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
+import org.gingesnap.cdc.connector.DatabaseProvider;
 import org.gingesnap.cdc.consumer.BatchConsumer;
 import org.gingesnap.cdc.remote.RemoteOffsetStore;
 import org.gingesnap.cdc.remote.RemoteSchemaHistory;
@@ -40,7 +41,9 @@ public class EngineWrapper {
    private static Properties defaultProperties(Connector connector, Database database, URI uriToUse) {
       Properties props = new Properties();
       props.setProperty("name", "engine");
-      props.put("connector.class", connector.connector());
+
+      DatabaseProvider provider = DatabaseProvider.valueOf(connector.connector());
+      props.putAll(provider.databaseProperties(connector, database));
 
       // Required property
       props.setProperty("topic.prefix", connector.topic());
@@ -57,7 +60,6 @@ public class EngineWrapper {
       // Additional configuration
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.
       props.setProperty("converter.schemas.enable", "true"); // Include schema in events, we use to retrieve the key.
-      props.setProperty("table.include.list", String.format("%s.%s", connector.schema(), connector.table()));
 
       // Apply filters
       props.setProperty("transforms", "filter");
