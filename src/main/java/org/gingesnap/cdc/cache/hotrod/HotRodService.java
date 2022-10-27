@@ -58,6 +58,7 @@ public class HotRodService implements CacheService {
       if (!uri.getScheme().startsWith("hotrod")) {
          return null;
       }
+
       String multiMapCacheName = "debezium-schema";
       RemoteCacheManager remoteCacheManager = otherURIs.computeIfAbsent(uri, RemoteCacheManager::new);
       remoteCacheManager.administration().getOrCreateCache(multiMapCacheName, new XMLStringConfiguration(
@@ -68,7 +69,8 @@ public class HotRodService implements CacheService {
                      "</encoding>" +
                   "</replicated-cache>"));
       MultimapCacheManager<String, String> remoteMultimapCacheManager = RemoteMultimapCacheManagerFactory.from(remoteCacheManager);
-      return new HotRodSchemaBackend(remoteMultimapCacheManager.get(multiMapCacheName));
+      // Support duplicates so it uses a list which is ordered
+      return new HotRodSchemaBackend(remoteMultimapCacheManager.get(multiMapCacheName, true));
    }
 
    @Override
