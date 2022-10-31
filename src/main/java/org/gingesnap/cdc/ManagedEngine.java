@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 
 import org.gingesnap.cdc.cache.CacheService;
@@ -30,7 +29,7 @@ public class ManagedEngine {
          new Thread(r, "scheduled-engine-error-handler"));
    private final Map<String, StartStopEngine> engines = new ConcurrentHashMap<>();
 
-   @Inject Instance<Region> runtimeConfiguration;
+   @Inject Region runtimeConfiguration;
 
    @Inject @All List<CacheService> services;
 
@@ -45,14 +44,12 @@ public class ManagedEngine {
 
    public void start(@Observes StartupEvent ignore) {
       log.info("Starting service");
-      Region configuration = runtimeConfiguration.get();
-      for (Map.Entry<String, Region.SingleRegion> entry : configuration.regions().entrySet()) {
+      for (Map.Entry<String, Region.SingleRegion> entry : runtimeConfiguration.regions().entrySet()) {
          StartStopEngine sse = engines.computeIfAbsent(entry.getKey(), name -> {
             Region.SingleRegion regionConfiguration = entry.getValue();
-            URI uri = URI.create(regionConfiguration.backend().uri());
+            URI uri = regionConfiguration.backend().uri();
             CacheService cacheService = findCacheService(uri);
-            EngineWrapper engine = new EngineWrapper(name, uri, regionConfiguration.connector(),
-                  regionConfiguration.database(), cacheService, this);
+            EngineWrapper engine = new EngineWrapper(name, regionConfiguration, cacheService, this);
             return new StartStopEngine(engine);
          });
          sse.start();
