@@ -10,6 +10,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.gingesnap.cdc.cache.CacheService;
 import org.gingesnap.cdc.configuration.Connector;
 import org.gingesnap.cdc.configuration.Database;
@@ -21,6 +22,7 @@ import org.gingesnap.cdc.remote.RemoteSchemaHistory;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
+import io.debezium.storage.file.history.FileSchemaHistory;
 
 public class EngineWrapper {
 
@@ -49,9 +51,6 @@ public class EngineWrapper {
       Properties props = new Properties();
       props.setProperty("name", "engine");
 
-      DatabaseProvider provider = DatabaseProvider.valueOf(connector.connector());
-      props.putAll(provider.databaseProperties(connector, database));
-
       // Required property
       props.setProperty("topic.prefix", name);
 
@@ -60,7 +59,6 @@ public class EngineWrapper {
       props.setProperty("database.port", String.valueOf(database.port()));
       props.setProperty("database.user", database.user());
       props.setProperty("database.password", database.password());
-      props.setProperty("database.server.id", String.valueOf(Math.abs(new Random().nextInt())));
       props.setProperty("database.server.name", "gingersnap-eager");
       props.setProperty("snapshot.mode", "when_needed"); // Behavior when offset not available.
 
@@ -84,6 +82,9 @@ public class EngineWrapper {
       props.setProperty(RemoteSchemaHistory.URI_CACHE, uriToUse.toString());
       props.setProperty(RemoteSchemaHistory.TOPIC_NAME, name);
       props.setProperty(SCHEMA_HISTORY.name(), RemoteSchemaHistory.class.getCanonicalName());
+
+      DatabaseProvider provider = DatabaseProvider.valueOf(connector.connector());
+      props.putAll(provider.databaseProperties(connector, database));
 
       return props;
    }

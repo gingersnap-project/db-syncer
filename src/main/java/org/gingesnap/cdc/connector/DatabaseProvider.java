@@ -1,5 +1,7 @@
 package org.gingesnap.cdc.connector;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
+
 import java.util.Properties;
 import java.util.Random;
 
@@ -8,6 +10,7 @@ import org.gingesnap.cdc.configuration.Database;
 
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.postgresql.PostgresConnector;
+import io.debezium.connector.sqlserver.SqlServerConnector;
 
 public enum DatabaseProvider {
    MYSQL {
@@ -38,6 +41,23 @@ public enum DatabaseProvider {
          properties.setProperty("publication.autocreate.mode", "filtered");
          properties.setProperty("plugin.name", "pgoutput");
 
+         return properties;
+      }
+   },
+   MSSQL {
+      @Override
+      public Properties databaseProperties(Connector connector, Database database) {
+         Properties properties = new Properties();
+         String databaseName = database.database().orElseThrow(() -> new IllegalStateException("SQL Server requires database name."));
+         properties.setProperty("connector.class", SqlServerConnector.class.getCanonicalName());
+         properties.setProperty(DATABASE_NAMES.name(), databaseName);
+         properties.setProperty("table.include.list", String.format("%s.%s", connector.schema(), connector.table()));
+         properties.setProperty("snapshot.mode", "initial");
+         properties.setProperty("database.encrypt", "false");
+
+         // SQL Server has a slightly different naming
+         String schemaRegex = String.format("/.*\\.%s\\.%s\\.%s\\..*/", databaseName, connector.schema(), connector.table());
+         properties.setProperty("transforms.filter.condition", "value.source.table == 'customer' && valueSchema.name ==~ " + schemaRegex);
          return properties;
       }
    };

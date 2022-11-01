@@ -51,7 +51,7 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
    @Override
    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
       super.configure(config, comparator, listener, useCatalogBeforeSchema);
-      String topicName = config.getString(TOPIC_NAME);
+      topicName = config.getString(TOPIC_NAME);
       String stringURI = config.getString(URI_CACHE);
       URI uri = URI.create(stringURI);
       for (InstanceHandle<CacheService> instanceHandle : Arc.container().listAll(CacheService.class)) {
