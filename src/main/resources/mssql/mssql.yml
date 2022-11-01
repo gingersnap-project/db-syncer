@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    restart: always
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: Password!42
+    ports:
+      - 1433:1433
+
+  tools:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      - sqlserver
+    restart: always
+    volumes:
+      - ./setup.sql:/tmp/setup.sql
+      - ./setup.sh:/tmp/setup.sh
+      - ./after.sql:/tmp/after.sql
+    command: /bin/bash /tmp/setup.sh

@@ -25,7 +25,7 @@ public class HotRodSchemaBackend implements SchemaBackend {
    @Override
    public void storeRecord(HistoryRecord record) throws SchemaHistoryException {
       try {
-         multimapCache.put("schema", stringFromRecord(record));
+         multimapCache.put("schema", stringFromRecord(record)).join();
       } catch (IOException e) {
          throw new SchemaHistoryException(e);
       }
