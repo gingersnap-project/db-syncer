@@ -6,6 +6,7 @@ import java.util.concurrent.CompletionStage;
 import org.gingesnap.cdc.CacheBackend;
 import org.gingesnap.cdc.OffsetBackend;
 import org.gingesnap.cdc.SchemaBackend;
+import org.gingesnap.cdc.translation.JsonTranslator;
 
 public interface CacheService {
    boolean supportsURI(URI uri);
@@ -14,7 +15,7 @@ public interface CacheService {
 
    CompletionStage<Void> stop(URI uri);
 
-   CacheBackend backendForURI(URI uri);
+   CacheBackend backendForURI(URI uri, JsonTranslator<?> keyTranslator, JsonTranslator<?> valueTranslator);
 
    OffsetBackend offsetBackendForURI(URI uri);
 
