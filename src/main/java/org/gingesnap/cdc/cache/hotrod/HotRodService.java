@@ -1,7 +1,6 @@
 package org.gingesnap.cdc.cache.hotrod;
 
 import java.net.URI;
-import java.util.Iterator;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -12,6 +11,7 @@ import org.gingesnap.cdc.CacheBackend;
 import org.gingesnap.cdc.OffsetBackend;
 import org.gingesnap.cdc.SchemaBackend;
 import org.gingesnap.cdc.cache.CacheService;
+import org.gingesnap.cdc.translation.JsonTranslator;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
@@ -67,9 +67,9 @@ public class HotRodService implements CacheService {
    }
 
    @Override
-   public CacheBackend backendForURI(URI uri) {
+   public CacheBackend backendForURI(URI uri, JsonTranslator<?> keyTranslator, JsonTranslator<?> valueTranslator) {
       RemoteCacheManager remoteCacheManager = managerForURI(uri);
-      return new HotRodCacheBackend(uri, remoteCacheManager.getCache(CACHE_NAME));
+      return new HotRodCacheBackend(uri, remoteCacheManager.getCache(CACHE_NAME), keyTranslator, valueTranslator);
    }
 
    private void getOrCreateCacheBackendCache(RemoteCacheManager rcm) {

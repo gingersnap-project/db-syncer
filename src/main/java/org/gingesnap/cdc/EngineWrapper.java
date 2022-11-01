@@ -3,6 +3,8 @@ package org.gingesnap.cdc;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
@@ -19,6 +21,12 @@ import org.gingesnap.cdc.connector.DatabaseProvider;
 import org.gingesnap.cdc.consumer.BatchConsumer;
 import org.gingesnap.cdc.remote.RemoteOffsetStore;
 import org.gingesnap.cdc.remote.RemoteSchemaHistory;
+import org.gingesnap.cdc.translation.ColumnJsonTranslator;
+import org.gingesnap.cdc.translation.ColumnStringTranslator;
+import org.gingesnap.cdc.translation.IdentityTranslator;
+import org.gingesnap.cdc.translation.JsonTranslator;
+import org.gingesnap.cdc.translation.PrependJsonTranslator;
+import org.gingesnap.cdc.translation.PrependStringTranslator;
 
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
@@ -96,10 +104,30 @@ public class EngineWrapper {
    }
 
    public void start() {
+      JsonTranslator<?> keyTranslator;
+      JsonTranslator<?> valueTranslator = backend.columns().isPresent() ?
+            new ColumnJsonTranslator(backend.columns().get()) : IdentityTranslator.getInstance();
+      Optional<List<String>> optionalKeys = backend.keyColumns();
+      // TODO: hardcoded value here
+      List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
+      switch (backend.keyType()) {
+         case PLAIN:
+            ColumnStringTranslator stringTranslator = new ColumnStringTranslator(columnsToUse, backend.plainSeparator());
+            keyTranslator = backend.prefixRuleName() ? new PrependStringTranslator(stringTranslator, name) : stringTranslator;
+            break;
+         case JSON:
+            ColumnJsonTranslator jsonTranslator = new ColumnJsonTranslator(columnsToUse);
+            // TODO: hardcoded value here
+            keyTranslator = backend.prefixRuleName() ? new PrependJsonTranslator(jsonTranslator, backend.jsonRuleName(), name) : jsonTranslator;
+            break;
+         default:
+            throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
+      }
       this.engine = DebeziumEngine.create(Json.class)
             .using(properties)
             .using(this.getClass().getClassLoader())
-            .notifying(new BatchConsumer(cacheService.backendForURI(backend.uri()), this))
+            .notifying(new BatchConsumer(cacheService.backendForURI(backend.uri(), keyTranslator,
+                  valueTranslator), this))
             .build();
       executor.submit(engine);
    }

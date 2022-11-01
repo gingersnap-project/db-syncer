@@ -62,10 +62,10 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
          case "u":
          // snapshot
          case "r":
-            return cache.put(jsonAfter.at("id").asString(), jsonAfter);
+            return cache.put(jsonAfter);
          //delete
          case "d":
-            return cache.remove(jsonBefore.at("id").asString());
+            return cache.remove(jsonBefore);
          default:
             log.info("Unrecognized operation [{}] for {}", jsonPayload.at("op"), jsonPayload);
             return CompletableFuture.completedFuture(null);
