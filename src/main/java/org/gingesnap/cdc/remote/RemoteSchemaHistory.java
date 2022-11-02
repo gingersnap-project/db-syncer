@@ -56,8 +56,8 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
       URI uri = URI.create(stringURI);
       for (InstanceHandle<CacheService> instanceHandle : Arc.container().listAll(CacheService.class)) {
          CacheService cacheService = instanceHandle.get();
-         schemaBackend = cacheService.schemaBackendForURI(uri);
-         if (schemaBackend != null) {
+         if (cacheService.supportsURI(uri)) {
+            schemaBackend = cacheService.schemaBackendForURI(uri);
             break;
          }
       }

@@ -64,8 +64,8 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       URI uri = URI.create(stringURI);
       for (InstanceHandle<CacheService> instanceHandle : Arc.container().listAll(CacheService.class)) {
          CacheService cacheService = instanceHandle.get();
-         offsetBackend = cacheService.offsetBackendForURI(uri);
-         if (offsetBackend != null) {
+         if (cacheService.supportsURI(uri)) {
+            offsetBackend = cacheService.offsetBackendForURI(uri);
             break;
          }
       }
