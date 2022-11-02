@@ -55,12 +55,30 @@ Easily start your Reactive RESTful Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
 
-# Running with MySQL
+# Deploying DB on kubernetes
+
+## MySQL
+1. Deploy DB `kubectl kustomize deploy/mysql | kubectl -n <namespace> apply -f -`
+2. Populate DB `kubectl -n <namespace> exec deployment/mysql -- mysql -uroot -proot < src/main/resources/populate.sql`
+3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/mysql 3306:3306`
+4. Run Infinispan locally `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server`
+5. Run DB-Syncer locally `quarkus dev`
+
+## Postgres
+1. Deploy DB `kubectl kustomize deploy/postgres | kubectl -n <namespace> apply -f -`
+2. Populate DB ` kubectl -n mysql exec -it deployment/postgres -- psql -U root -d debeziumdb -a < src/main/resources/populate.sql`
+3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/postgres 5432:5432`
+4. Run Infinispan `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server`
+5. Run DB-Syncer `quarkus dev`
+
+# Deploying DB with Docker Compose
+
+## MySQL
 
 Requirements:
 
 1. Make sure docker is running and you have docker-compose available
-2. Run `docker-compose -f src/main/resources/mysql/mysql.yml up` to start mysql exposed on 3306 and adminer on 8090
+2. Run `docker-compose -f deploy/mysql/mysql-compose.yaml up` to start mysql exposed on 3306 and adminer on 8090
   Adminer can be looked at via a browser at localhost:8090 as an administration tool. Login is user: root, password: root. You may need to refresh the schema to see the debezium one.
 3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
   Server console is available at localhost:11222
@@ -70,12 +88,12 @@ Requirements:
   Running `docker exec -i <container id> mysql -uroot -proot < src/main/resources/populate.sql` will execute some operations in the database.
   To exit, press q in the terminal running the application, so the offset is flushed.
 
-# Running with Postgres
+## Postgres
 
 Requirements:
 
 1. Make sure docker is running and you have docker-compose available
-2. Run `docker-compose -f src/main/resources/pgsql/postgres.yml up` to start Postgres exposed on 5432
+2. Run `docker-compose -f deploy/postgres/postgres-compose.yaml up` to start Postgres exposed on 5432
    * This will create the database, user, schema, and tables necessary for testing.
 3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server 
    * Server console is available at localhost:11222
@@ -85,19 +103,19 @@ Requirements:
    * Running `docker exec -i <container id> psql -U root -d debeziumdb -a < src/main/resources/populate.sql` will execute some operations in the database.
    * To exit, press q in the terminal running the application, so the offset is flushed.
 
-# Running with SQL Server
+## SQL Server
 
 To run with SQL server some additional setup is required.
 
 1. Make sure docker is running and you have docker-compose available
-2. Run `docker-compose -f src/main/resources/mssql/mssql.yml up` to start Postgres exposed on 5432
+2. Run `docker-compose -f deploy/mssql/mssql-compose.yaml up` to start Postgres exposed on 5432
     * This will create the database, user, schema, and tables necessary for testing.
 3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
     * Server console is available at localhost:11222
 
 Now is necessary to enable the SQL Server Agent and CDC for the tables:
 
-1. Run `sh src/main/resources/mssql/after.sh`
+1. Run `sh deploy/mssql/after.sh`
    * This will start the agent and configure CDC for the `customer` table
 
 Now with everything setup:
