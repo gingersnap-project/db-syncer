@@ -72,7 +72,7 @@ public class EngineWrapper {
       props.setProperty("database.user", database.user());
       props.setProperty("database.password", database.password());
       props.setProperty("database.server.name", "gingersnap-eager");
-      props.setProperty("snapshot.mode", "when_needed"); // Behavior when offset not available.
+      props.setProperty("snapshot.mode", "initial"); // Behavior when offset not available.
 
       // Additional configuration
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.

@@ -52,7 +52,6 @@ public enum DatabaseProvider {
          properties.setProperty("connector.class", SqlServerConnector.class.getCanonicalName());
          properties.setProperty(DATABASE_NAMES.name(), databaseName);
          properties.setProperty("table.include.list", String.format("%s.%s", connector.schema(), connector.table()));
-         properties.setProperty("snapshot.mode", "initial");
          properties.setProperty("database.encrypt", "false");
 
          // SQL Server has a slightly different naming
