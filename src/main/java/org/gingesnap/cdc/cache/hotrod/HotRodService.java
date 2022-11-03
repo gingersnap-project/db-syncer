@@ -75,12 +75,12 @@ public class HotRodService implements CacheService {
    private void getOrCreateCacheBackendCache(RemoteCacheManager rcm) {
       rcm.administration().getOrCreateCache(CACHE_NAME,
          new StringConfiguration(
-            "<distributed-cache>" +
+            "<local-cache>" +
                "<encoding>" +
                   "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
                   "<value media-type=\"" + MediaType.APPLICATION_JSON_TYPE + "\"/>" +
                "</encoding>" +
-            "</distributed-cache>"));
+            "</local-cache>"));
    }
 
    @Override
@@ -92,9 +92,9 @@ public class HotRodService implements CacheService {
    private void getOrCreateOffsetBackendCache(RemoteCacheManager rcm) {
       rcm.administration()
          .getOrCreateCache(OFFSET_CACHE_NAME, new StringConfiguration(
-            "<replicated-cache>" +
+            "<local-cache>" +
                "<encoding media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
-            "</replicated-cache>"));
+            "</local-cache>"));
    }
 
    @Override
@@ -108,12 +108,12 @@ public class HotRodService implements CacheService {
 
    private RemoteCache<String, String> getOrCreateSchemaBackendCache(RemoteCacheManager rcm, String multiMapCacheName) {
       return rcm.administration().getOrCreateCache(multiMapCacheName, new StringConfiguration(
-            "<replicated-cache>" +
+            "<local-cache>" +
                "<encoding>" +
                   "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
                   "<value media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
                "</encoding>" +
-            "</replicated-cache>"));
+            "</local-cache>"));
    }
 
    private void createCaches(RemoteCacheManager remoteCacheManager) {
