@@ -1,11 +1,17 @@
 package io.gingersnap_project.cdc.consumer;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 
 import io.gingersnap_project.cdc.EngineWrapper;
 import io.gingersnap_project.cdc.chain.Event;
 import io.gingersnap_project.cdc.chain.EventContext;
 import io.gingersnap_project.cdc.chain.EventProcessingChain;
+import io.gingersnap_project.cdc.util.CompletionStages;
 import io.gingersnap_project.cdc.util.Serialization;
 
 import io.debezium.engine.ChangeEvent;
@@ -20,10 +26,12 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
    private static final Logger log = LoggerFactory.getLogger(BatchConsumer.class);
    private final EngineWrapper engine;
    private final EventProcessingChain chain;
+   private final Executor executor;
 
-   public BatchConsumer(EngineWrapper engine, EventProcessingChain chain) {
+   public BatchConsumer(EngineWrapper engine, EventProcessingChain chain, Executor executor) {
       this.chain = chain;
       this.engine = engine;
+      this.executor = executor;
    }
 
    @Override
@@ -31,11 +39,28 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
       log.info("Processing {} entries", records.size());
 
       try {
-         for (ChangeEvent<SourceRecord, SourceRecord> ev : records) {
-            // TODO: we may be able to do this in parallel later or asynchronously even
-            chain.process(create(ev), new EventContext());
-            committer.markProcessed(ev);
+         Map<Object, ChangeEvent<SourceRecord, SourceRecord>> acc = new HashMap<>();
+         for (ChangeEvent<SourceRecord, SourceRecord> curr : records) {
+            acc.compute(curr.value().key(), (key, prev) -> {
+               if (prev != null) {
+                  uncheckedCommit(prev, committer);
+               }
+               return curr;
+            });
          }
+
+         CompletionStages.join(
+               CompletionStages.allOf(
+                     acc.values().parallelStream()
+                           .map(ev ->
+                              CompletableFuture.supplyAsync(() -> {
+                                 chain.process(create(ev), new EventContext());
+                                 uncheckedCommit(ev, committer);
+                                 return null;
+                              }, executor))
+                           .toArray(CompletionStage[]::new)
+               )
+         );
          committer.markBatchFinished();
       } catch (Throwable t) {
          log.info("Exception encountered writing updates for engine {}", engine.getName(), t);
@@ -54,5 +79,13 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
          return Serialization.convert((Struct) object);
 
       throw new IllegalStateException("Object is not a struct");
+   }
+
+   private void uncheckedCommit(ChangeEvent<SourceRecord, SourceRecord> ev, DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> committer) {
+      try {
+         committer.markProcessed(ev);
+      } catch (InterruptedException e) {
+         throw new RuntimeException(e);
+      }
    }
 }
