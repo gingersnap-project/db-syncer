@@ -35,7 +35,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 public class EngineWrapper {
 
-   private static final ExecutorService executor = Executors.newSingleThreadExecutor(runnable ->
+   private static final ExecutorService executor = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors() * 2), runnable ->
          new Thread(runnable, "engine"));
    private final String name;
    private final CacheService cacheService;
@@ -99,7 +99,7 @@ public class EngineWrapper {
       this.engine = DebeziumEngine.create(Connect.class)
             .using(properties)
             .using(this.getClass().getClassLoader())
-            .notifying(new BatchConsumer(this, chain))
+            .notifying(new BatchConsumer(this, chain, executor))
             .build();
       executor.submit(engine);
    }
