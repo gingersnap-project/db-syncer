@@ -16,6 +16,7 @@ import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
 import org.infinispan.client.hotrod.multimap.RemoteMultimapCacheManagerFactory;
+import org.infinispan.commons.api.CacheContainerAdmin;
 import org.infinispan.commons.configuration.StringConfiguration;
 import org.infinispan.commons.dataconversion.MediaType;
 
@@ -73,8 +74,9 @@ public class HotRodService implements CacheService {
    }
 
    private void getOrCreateCacheBackendCache(RemoteCacheManager rcm) {
-      rcm.administration().getOrCreateCache(CACHE_NAME,
-         new StringConfiguration(
+      rcm.administration()
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache(CACHE_NAME, new StringConfiguration(
             "<local-cache>" +
                "<encoding>" +
                   "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
@@ -91,7 +93,8 @@ public class HotRodService implements CacheService {
 
    private void getOrCreateOffsetBackendCache(RemoteCacheManager rcm) {
       rcm.administration()
-         .getOrCreateCache(OFFSET_CACHE_NAME, new StringConfiguration(
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache(OFFSET_CACHE_NAME, new StringConfiguration(
             "<local-cache>" +
                "<encoding media-type=\"" + MediaType.APPLICATION_OCTET_STREAM_TYPE + "\"/>" +
             "</local-cache>"));
@@ -107,7 +110,9 @@ public class HotRodService implements CacheService {
    }
 
    private RemoteCache<String, String> getOrCreateSchemaBackendCache(RemoteCacheManager rcm, String multiMapCacheName) {
-      return rcm.administration().getOrCreateCache(multiMapCacheName, new StringConfiguration(
+      return rcm.administration()
+            .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+            .getOrCreateCache(multiMapCacheName, new StringConfiguration(
             "<local-cache>" +
                "<encoding>" +
                   "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
