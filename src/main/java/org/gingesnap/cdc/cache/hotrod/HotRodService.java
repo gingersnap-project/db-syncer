@@ -80,7 +80,7 @@ public class HotRodService implements CacheService {
             "<local-cache>" +
                "<encoding>" +
                   "<key media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
-                  "<value media-type=\"" + MediaType.APPLICATION_JSON_TYPE + "\"/>" +
+                  "<value media-type=\"" + MediaType.TEXT_PLAIN_TYPE + "\"/>" +
                "</encoding>" +
             "</local-cache>"));
    }
