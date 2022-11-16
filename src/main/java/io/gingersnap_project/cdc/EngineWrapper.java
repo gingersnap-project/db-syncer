@@ -11,6 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.gingersnap_project.cdc.cache.CacheService;
+import io.gingersnap_project.cdc.chain.EventProcessingChain;
+import io.gingersnap_project.cdc.chain.EventProcessingChainFactory;
 import io.gingersnap_project.cdc.configuration.Backend;
 import io.gingersnap_project.cdc.configuration.Connector;
 import io.gingersnap_project.cdc.configuration.Database;
@@ -26,9 +28,10 @@ import io.gingersnap_project.cdc.translation.JsonTranslator;
 import io.gingersnap_project.cdc.translation.PrependJsonTranslator;
 import io.gingersnap_project.cdc.translation.PrependStringTranslator;
 
+import io.debezium.embedded.Connect;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.format.Json;
+import org.apache.kafka.connect.source.SourceRecord;
 
 public class EngineWrapper {
 
@@ -37,16 +40,16 @@ public class EngineWrapper {
    private final String name;
    private final CacheService cacheService;
    private final ManagedEngine managedEngine;
-   private final Backend backend;
+   private final Region.SingleRegion region;
    private final Properties properties;
-   private volatile DebeziumEngine<ChangeEvent<String, String>> engine;
+   private volatile DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
 
    private EngineWrapper(String name, Region.SingleRegion region, Properties properties, CacheService cacheService,
          ManagedEngine managedEngine) {
       this.name = name;
       this.cacheService = cacheService;
       this.managedEngine = managedEngine;
-      this.backend = region.backend();
+      this.region = region;
       this.properties = properties;
    }
 
@@ -75,15 +78,6 @@ public class EngineWrapper {
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.
       props.setProperty("converter.schemas.enable", "true"); // Include schema in events, we use to retrieve the key.
 
-      // Apply filters
-      props.setProperty("transforms", "filter");
-      props.setProperty("transforms.filter.type", "io.debezium.transforms.Filter");
-      props.setProperty("transforms.filter.language", "jsr223.groovy");
-      String schemaRegex = String.format("/%s\\.%s\\.%s\\..*/", name, connector.schema(), connector.table());
-      props.setProperty("transforms.filter.condition",
-            // The value is from table 'customer' and is something with `topic.prefix`.`database.dbname`.table configuration.
-            "value.source.table == 'customer' && valueSchema.name ==~ " + schemaRegex);
-
       Backend backend = region.backend();
       String uri = backend.uri().toString();
       props.setProperty(RemoteOffsetStore.URI_CACHE, uri);
@@ -101,6 +95,38 @@ public class EngineWrapper {
    }
 
    public void start() {
+      EventProcessingChain chain = EventProcessingChainFactory.create(region, createCacheBackend(name, region.backend()));
+      this.engine = DebeziumEngine.create(Connect.class)
+            .using(properties)
+            .using(this.getClass().getClassLoader())
+            .notifying(new BatchConsumer(this, chain))
+            .build();
+      executor.submit(engine);
+   }
+
+   public void stop() throws IOException {
+      engine.close();
+      engine = null;
+      cacheService.stop(region.backend().uri());
+   }
+
+   public void notifyError() {
+      managedEngine.engineError(name);
+   }
+
+   public void shutdownCacheService() {
+       cacheService.shutdown(region.backend().uri());
+   }
+
+   public CompletionStage<Boolean> cacheServiceAvailable() {
+      return cacheService.reconnect(region.backend().uri());
+   }
+
+   public String getName() {
+      return name;
+   }
+
+   private CacheBackend createCacheBackend(String name, Backend backend) {
       JsonTranslator<?> keyTranslator;
       JsonTranslator<?> valueTranslator = backend.columns().isPresent() ?
             new ColumnJsonTranslator(backend.columns().get()) : IdentityTranslator.getInstance();
@@ -120,34 +146,7 @@ public class EngineWrapper {
          default:
             throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
       }
-      this.engine = DebeziumEngine.create(Json.class)
-            .using(properties)
-            .using(this.getClass().getClassLoader())
-            .notifying(new BatchConsumer(cacheService.backendForURI(backend.uri(), keyTranslator,
-                  valueTranslator), this))
-            .build();
-      executor.submit(engine);
-   }
 
-   public void stop() throws IOException {
-      engine.close();
-      engine = null;
-      cacheService.stop(backend.uri());
-   }
-
-   public void notifyError() {
-      managedEngine.engineError(name);
-   }
-
-   public void shutdownCacheService() {
-       cacheService.shutdown(backend.uri());
-   }
-
-   public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect(backend.uri());
-   }
-
-   public String getName() {
-      return name;
+      return cacheService.backendForURI(backend.uri(), keyTranslator, valueTranslator);
    }
 }

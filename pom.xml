@@ -96,16 +96,6 @@
       <version>${version.debezium}</version>
     </dependency>
     <dependency>
-      <groupId>io.debezium</groupId>
-      <artifactId>debezium-scripting</artifactId>
-      <version>${version.debezium}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.groovy</groupId>
-      <artifactId>groovy-jsr223</artifactId>
-      <version>3.0.13</version>
-    </dependency>
-    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
     </dependency>
