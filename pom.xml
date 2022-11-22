@@ -16,6 +16,7 @@
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
     <version.debezium>2.0.0.Final</version.debezium>
+    <org.gingersnap.api.basedir>${project.basedir}/gingersnap-api</org.gingersnap.api.basedir>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -187,6 +188,40 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+				<groupId>kr.motd.maven</groupId>
+				<artifactId>os-maven-plugin</artifactId>
+				<version>1.6.2</version>
+				<executions>
+					<execution>
+						<phase>initialize</phase>
+						<goals>
+							<goal>detect</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+      <plugin>
+				<groupId>org.xolstice.maven.plugins</groupId>
+				<artifactId>protobuf-maven-plugin</artifactId>
+				<version>0.6.1</version>
+				<extensions>true</extensions>
+				<executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+							<goal>test-compile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<protoSourceRoot>${org.gingersnap.api.basedir}</protoSourceRoot>
+          <includes>
+						<include>config/**/*.proto</include>
+					</includes>
+					<protocArtifact>com.google.protobuf:protoc:4.0.0-rc-2:exe:${os.detected.classifier}</protocArtifact>
+				</configuration>
+			</plugin>
     </plugins>
   </build>
   <profiles>
