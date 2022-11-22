@@ -61,14 +61,14 @@ Easily start your Reactive RESTful Web Services
 1. Deploy DB `kubectl kustomize deploy/mysql | kubectl -n <namespace> apply -f -`
 2. Populate DB `kubectl -n <namespace> exec deployment/mysql -- mysql -uroot -proot < src/main/resources/populate.sql`
 3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/mysql 3306:3306`
-4. Run Infinispan locally `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server`
+4. Run the cache-manager locally `docker run -it -p 11222:11222 quay.io/gingersnap/cache-manager`
 5. Run DB-Syncer locally `quarkus dev`
 
 ## Postgres
 1. Deploy DB `kubectl kustomize deploy/postgres | kubectl -n <namespace> apply -f -`
 2. Populate DB ` kubectl -n mysql exec -it deployment/postgres -- psql -U root -d debeziumdb -a < src/main/resources/populate.sql`
 3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/postgres 5432:5432`
-4. Run Infinispan `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server`
+4. Run the cache-manager locally `docker run -it -p 11222:11222 quay.io/gingersnap/cache-manager`
 5. Run DB-Syncer `quarkus dev`
 
 # Deploying DB with Docker Compose
@@ -80,8 +80,7 @@ Requirements:
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/mysql/mysql-compose.yaml up` to start mysql exposed on 3306 and adminer on 8090
   Adminer can be looked at via a browser at localhost:8090 as an administration tool. Login is user: root, password: root. You may need to refresh the schema to see the debezium one.
-3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
-  Server console is available at localhost:11222
+3. Run the cache-manager locally `docker run -it -p 11222:11222 quay.io/gingersnap/cache-manager`
 4. Run `quarkus dev` from the poc base directory.
   This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`
 5. Perform inserts and updates to the database
@@ -95,8 +94,7 @@ Requirements:
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/postgres/postgres-compose.yaml up` to start Postgres exposed on 5432
    * This will create the database, user, schema, and tables necessary for testing.
-3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server 
-   * Server console is available at localhost:11222
+3. Run the cache-manager locally `docker run -it -p 11222:11222 quay.io/gingersnap/cache-manager`
 4. Run `quarkus dev -Dquarkus.profile=pgsql` from the poc base directory.
    * This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`.
 5. Perform inserts and updates to the database
@@ -110,8 +108,7 @@ To run with SQL server some additional setup is required.
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/mssql/mssql-compose.yaml up` to start Postgres exposed on 5432
     * This will create the database, user, schema, and tables necessary for testing.
-3. Run `docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" infinispan/server` to start ISPN server
-    * Server console is available at localhost:11222
+3. Run the cache-manager locally `docker run -it -p 11222:11222 quay.io/gingersnap/cache-manager`
 
 Now is necessary to enable the SQL Server Agent and CDC for the tables:
 
