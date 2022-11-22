@@ -16,7 +16,7 @@ import io.gingersnap_project.cdc.chain.EventProcessingChainFactory;
 import io.gingersnap_project.cdc.configuration.Backend;
 import io.gingersnap_project.cdc.configuration.Connector;
 import io.gingersnap_project.cdc.configuration.Database;
-import io.gingersnap_project.cdc.configuration.Region;
+import io.gingersnap_project.cdc.configuration.Rule;
 import io.gingersnap_project.cdc.connector.DatabaseProvider;
 import io.gingersnap_project.cdc.consumer.BatchConsumer;
 import io.gingersnap_project.cdc.remote.RemoteOffsetStore;
@@ -40,29 +40,29 @@ public class EngineWrapper {
    private final String name;
    private final CacheService cacheService;
    private final ManagedEngine managedEngine;
-   private final Region.SingleRegion region;
+   private final Rule.SingleRule rule;
    private final Properties properties;
    private volatile DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
 
-   private EngineWrapper(String name, Region.SingleRegion region, Properties properties, CacheService cacheService,
-         ManagedEngine managedEngine) {
+   private EngineWrapper(String name, Rule.SingleRule rule, Properties properties, CacheService cacheService,
+                         ManagedEngine managedEngine) {
       this.name = name;
       this.cacheService = cacheService;
       this.managedEngine = managedEngine;
-      this.region = region;
+      this.rule = rule;
       this.properties = properties;
    }
 
-   public EngineWrapper(String name, Region.SingleRegion region, CacheService cacheService, ManagedEngine managedEngine) {
-      this(name, region, defaultProperties(name, region), cacheService, managedEngine);
+   public EngineWrapper(String name, Rule.SingleRule rule, CacheService cacheService, ManagedEngine managedEngine) {
+      this(name, rule, defaultProperties(name, rule), cacheService, managedEngine);
    }
 
-   private static Properties defaultProperties(String name, Region.SingleRegion region) {
+   private static Properties defaultProperties(String name, Rule.SingleRule rule) {
       Properties props = new Properties();
       props.setProperty("name", "engine");
 
-      Connector connector = region.connector();
-      Database database = region.database();
+      Connector connector = rule.connector();
+      Database database = rule.database();
       // Required property
       props.setProperty("topic.prefix", name);
 
@@ -78,7 +78,7 @@ public class EngineWrapper {
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.
       props.setProperty("converter.schemas.enable", "true"); // Include schema in events, we use to retrieve the key.
 
-      Backend backend = region.backend();
+      Backend backend = rule.backend();
       String uri = backend.uri().toString();
       props.setProperty(RemoteOffsetStore.URI_CACHE, uri);
       props.setProperty(RemoteOffsetStore.TOPIC_NAME, name);
@@ -95,7 +95,7 @@ public class EngineWrapper {
    }
 
    public void start() {
-      EventProcessingChain chain = EventProcessingChainFactory.create(region, createCacheBackend(name, region.backend()));
+      EventProcessingChain chain = EventProcessingChainFactory.create(rule, createCacheBackend(name, rule.backend()));
       this.engine = DebeziumEngine.create(Connect.class)
             .using(properties)
             .using(this.getClass().getClassLoader())
@@ -107,7 +107,7 @@ public class EngineWrapper {
    public void stop() throws IOException {
       engine.close();
       engine = null;
-      cacheService.stop(region.backend().uri());
+      cacheService.stop(rule.backend().uri());
    }
 
    public void notifyError() {
@@ -115,11 +115,11 @@ public class EngineWrapper {
    }
 
    public void shutdownCacheService() {
-       cacheService.shutdown(region.backend().uri());
+       cacheService.shutdown(rule.backend().uri());
    }
 
    public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect(region.backend().uri());
+      return cacheService.reconnect(rule.backend().uri());
    }
 
    public String getName() {
