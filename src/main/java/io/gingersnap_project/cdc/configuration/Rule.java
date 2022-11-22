@@ -6,12 +6,12 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 
 @ConfigMapping(prefix = "gingersnap")
-public interface Region {
+public interface Rule {
 
-   @WithName("region")
-   Map<String, SingleRegion> regions();
+   @WithName("rule")
+   Map<String, SingleRule> rules();
 
-   interface SingleRegion {
+   interface SingleRule {
 
       Connector connector();
 

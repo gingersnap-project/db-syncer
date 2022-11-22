@@ -1,6 +1,6 @@
 package io.gingersnap_project.cdc.chain;
 
-import io.gingersnap_project.cdc.configuration.Region;
+import io.gingersnap_project.cdc.configuration.Rule;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +19,10 @@ public class EventFilterLink extends EventProcessingChain {
 
    private static final Logger log = LoggerFactory.getLogger(EventFilterLink.class);
 
-   private final Region.SingleRegion region;
+   private final Rule.SingleRule rule;
 
-   public EventFilterLink(Region.SingleRegion region) {
-      this.region = region;
+   public EventFilterLink(Rule.SingleRule rule) {
+      this.rule = rule;
    }
 
    @Override
@@ -33,7 +33,7 @@ public class EventFilterLink extends EventProcessingChain {
       }
 
       String table = event.value().at("source").at("table").asString();
-      return region.connector().table().equals(table) && processNext(event, ctx);
+      return rule.connector().table().equals(table) && processNext(event, ctx);
    }
 
    /**

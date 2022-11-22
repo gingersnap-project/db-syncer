@@ -14,7 +14,7 @@ import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
 import io.gingersnap_project.cdc.cache.CacheService;
-import io.gingersnap_project.cdc.configuration.Region;
+import io.gingersnap_project.cdc.configuration.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,7 @@ public class ManagedEngine {
    private final Map<String, StartStopEngine> engines = new ConcurrentHashMap<>();
 
    @Inject
-   Region runtimeConfiguration;
+   Rule runtimeConfiguration;
 
    @Inject @All List<CacheService> services;
 
@@ -45,12 +45,12 @@ public class ManagedEngine {
 
    public void start(@Observes StartupEvent ignore) {
       log.info("Starting service");
-      for (Map.Entry<String, Region.SingleRegion> entry : runtimeConfiguration.regions().entrySet()) {
+      for (Map.Entry<String, Rule.SingleRule> entry : runtimeConfiguration.rules().entrySet()) {
          StartStopEngine sse = engines.computeIfAbsent(entry.getKey(), name -> {
-            Region.SingleRegion regionConfiguration = entry.getValue();
-            URI uri = regionConfiguration.backend().uri();
+            Rule.SingleRule ruleConfiguration = entry.getValue();
+            URI uri = ruleConfiguration.backend().uri();
             CacheService cacheService = findCacheService(uri);
-            EngineWrapper engine = new EngineWrapper(name, regionConfiguration, cacheService, this);
+            EngineWrapper engine = new EngineWrapper(name, ruleConfiguration, cacheService, this);
             return new StartStopEngine(engine);
          });
          sse.start();
