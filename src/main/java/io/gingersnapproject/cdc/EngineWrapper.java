@@ -25,6 +25,7 @@ import io.gingersnapproject.cdc.consumer.BatchConsumer;
 import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.remote.RemoteOffsetStore;
 import io.gingersnapproject.cdc.remote.RemoteSchemaHistory;
+import io.gingersnapproject.cdc.util.CompletionStages;
 
 public class EngineWrapper {
 
@@ -37,6 +38,7 @@ public class EngineWrapper {
    private final Properties properties;
    private final NotificationManager eventing;
    private volatile DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
+   private volatile boolean stopped = false;
 
    private EngineWrapper(String name, Configuration config, Rule rule, Properties properties, CacheService cacheService,
                          NotificationManager eventing) {
@@ -111,7 +113,10 @@ public class EngineWrapper {
                   if (error != null) eventing.connectorFailed(name, error);
                })
                .build();
+         if (stopped)
+            CompletionStages.join(cacheService.reconnect(config.cache().uri()));
          executor.submit(engine);
+         stopped = false;
       }
    }
 
@@ -119,6 +124,7 @@ public class EngineWrapper {
       engine.close();
       engine = null;
       cacheService.stop(config.cache().uri());
+      stopped = true;
    }
 
    public void notifyError(Throwable t) {
