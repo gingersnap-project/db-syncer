@@ -21,15 +21,13 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.configuration.Configuration;
-import io.gingersnapproject.cdc.configuration.Rule;
 import io.quarkus.arc.All;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
-public class ManagedEngine {
+public class ManagedEngine implements DynamicRuleManagement {
    private static final Logger log = LoggerFactory.getLogger(ManagedEngine.class);
    private static final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(r ->
          new Thread(r, "scheduled-engine-error-handler"));
@@ -41,7 +39,7 @@ public class ManagedEngine {
    @Inject @All List<CacheService> services;
    @Inject NotificationManager eventing;
 
-    CacheService findCacheService(URI uri) {
+    private CacheService findCacheService(URI uri) {
       for (CacheService cacheService : services) {
          if (cacheService.supportsURI(uri)) {
             return cacheService;
@@ -50,21 +48,14 @@ public class ManagedEngine {
       throw new IllegalArgumentException("Unsupported URI received: " + uri + " ensure service is running if correct!");
    }
 
-   public void start(@Observes StartupEvent ignore) {
+   void start(@Observes StartupEvent ignore) {
       log.info("Starting service");
       for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
-         StartStopEngine sse = engines.computeIfAbsent(entry.getKey(), name -> {
-            Rule ruleConfiguration = entry.getValue();
-            URI uri = config.cache().uri();
-            CacheService cacheService = findCacheService(uri);
-            EngineWrapper engine = new EngineWrapper(name, config, ruleConfiguration, cacheService, eventing);
-            return new StartStopEngine(engine);
-         });
-         sse.start();
+         addRule(entry.getKey(), entry.getValue());
       }
    }
 
-   public void stop(@Observes ShutdownEvent ignore) {
+   void stop(@Observes ShutdownEvent ignore) {
       log.info("Service shutting down");
 
       try {
@@ -84,33 +75,6 @@ public class ManagedEngine {
       for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
          engineError(entry.getKey());
          break;
-      }
-   }
-
-   public StartStopEngine start(String name) {
-      StartStopEngine sse = engines.get(name);
-      if (sse != null) {
-         log.info("Starting engine {}", name);
-         sse.start();
-      }
-      return sse;
-   }
-
-   public StartStopEngine stop(String name) {
-      StartStopEngine sse = engines.get(name);
-      if (sse != null) {
-         stopEngine(sse, name);
-      }
-      return sse;
-   }
-
-   private static void stopEngine(StartStopEngine engine, String name) {
-      try {
-         log.info("Stopping engine {}", name);
-         engine.stop();
-      } catch (IOException e) {
-         log.error("Failing stopping engine {}", name, e);
-         throw new RuntimeException(e);
       }
    }
 
@@ -140,6 +104,40 @@ public class ManagedEngine {
       )));
    }
 
+   private static void stopEngine(StartStopEngine engine, String name) {
+      try {
+         log.info("Stopping engine {}", name);
+         engine.stop();
+      } catch (IOException e) {
+         log.error("Failing stopping engine {}", name, e);
+         throw new RuntimeException(e);
+      }
+   }
+
+   @Override
+   public void addRule(String name, Rule rule) {
+      StartStopEngine sse = engines.computeIfAbsent(name, ignore -> {
+         URI uri = config.cache().uri();
+         CacheService cacheService = findCacheService(uri);
+         EngineWrapper engine = new EngineWrapper(name, config, rule, cacheService, eventing);
+         return new StartStopEngine(engine);
+      });
+      sse.start();
+   }
+
+   @Override
+   public void removeRule(String name) {
+       engines.computeIfPresent(name, (ignore, sse) -> {
+          try {
+             sse.shutdown();
+          } catch (IOException e) {
+             log.error("Failed engine {} shutdown", name, e);
+             throw new RuntimeException(e);
+          }
+          return null;
+       });
+   }
+
    private enum Status {
       SHUTDOWN,
       RUNNING,
@@ -159,18 +157,16 @@ public class ManagedEngine {
 
       public synchronized void start() {
          switch (status) {
-            case RUNNING:
-            case SHUTDOWN:
-               throw new IllegalArgumentException("Engine " + engine.getName() + " cannot be started, state was " + status);
-            case STOPPED:
-            case RETRYING:
-            case STOPPING:
+            case RUNNING, SHUTDOWN -> throw new IllegalArgumentException(
+                  "Engine " + engine.getName() + " cannot be started, state was " + status);
+            case STOPPED, RETRYING, STOPPING -> {
                if (task != null) {
                   task.close();
                   task = null;
                }
                engine.start();
                status = Status.RUNNING;
+            }
          }
       }
 
@@ -183,18 +179,17 @@ public class ManagedEngine {
       }
 
       public synchronized void stop() throws IOException {
-          switch (status) {
-             case STOPPING:
-             case RUNNING:
-                engine.stop();
-                status = Status.STOPPED;
-                break;
-             case RETRYING:
-                task.close();
-                task = null;
-                status = Status.STOPPED;
-                break;
-          }
+         switch (status) {
+            case STOPPING, RUNNING -> {
+               engine.stop();
+               status = Status.STOPPED;
+            }
+            case RETRYING -> {
+               task.close();
+               task = null;
+               status = Status.STOPPED;
+            }
+         }
       }
 
       public synchronized void shutdown() throws IOException {
