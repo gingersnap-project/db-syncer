@@ -64,7 +64,7 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
          committer.markBatchFinished();
       } catch (Throwable t) {
          log.info("Exception encountered writing updates for engine {}", engine.getName(), t);
-         engine.notifyError();
+         engine.notifyError(t);
       }
    }
 

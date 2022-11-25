@@ -3,6 +3,7 @@ package io.gingersnapproject.cdc;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -19,6 +20,7 @@ import io.gingersnapproject.cdc.configuration.Database;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.cdc.connector.DatabaseProvider;
 import io.gingersnapproject.cdc.consumer.BatchConsumer;
+import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.remote.RemoteOffsetStore;
 import io.gingersnapproject.cdc.remote.RemoteSchemaHistory;
 import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
@@ -39,22 +41,22 @@ public class EngineWrapper {
          new Thread(runnable, "engine"));
    private final String name;
    private final CacheService cacheService;
-   private final ManagedEngine managedEngine;
    private final Rule.SingleRule rule;
    private final Properties properties;
+   private final NotificationManager eventing;
    private volatile DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
 
    private EngineWrapper(String name, Rule.SingleRule rule, Properties properties, CacheService cacheService,
-                         ManagedEngine managedEngine) {
+                         NotificationManager eventing) {
       this.name = name;
       this.cacheService = cacheService;
-      this.managedEngine = managedEngine;
       this.rule = rule;
+      this.eventing = eventing;
       this.properties = properties;
    }
 
-   public EngineWrapper(String name, Rule.SingleRule rule, CacheService cacheService, ManagedEngine managedEngine) {
-      this(name, rule, defaultProperties(name, rule), cacheService, managedEngine);
+   public EngineWrapper(String name, Rule.SingleRule rule, CacheService cacheService, NotificationManager eventing) {
+      this(name, rule, defaultProperties(name, rule), cacheService, eventing);
    }
 
    private static Properties defaultProperties(String name, Rule.SingleRule rule) {
@@ -95,13 +97,30 @@ public class EngineWrapper {
    }
 
    public void start() {
-      EventProcessingChain chain = EventProcessingChainFactory.create(rule, createCacheBackend(name, rule.backend()));
-      this.engine = DebeziumEngine.create(Connect.class)
-            .using(properties)
-            .using(this.getClass().getClassLoader())
-            .notifying(new BatchConsumer(this, chain, executor))
-            .build();
-      executor.submit(engine);
+      CacheBackend c = createCacheBackend(name, rule.backend());
+      if (c != null) {
+         EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
+         this.engine = DebeziumEngine.create(Connect.class)
+               .using(properties)
+               .using(this.getClass().getClassLoader())
+               .notifying(new BatchConsumer(this, chain, executor))
+               .using(new DebeziumEngine.ConnectorCallback() {
+                  @Override
+                  public void taskStarted() {
+                     eventing.connectorStarted(name);
+                  }
+
+                  @Override
+                  public void taskStopped() {
+                     eventing.connectorStopped(name);
+                  }
+               })
+               .using((success, message, error) -> {
+                  if (error != null) eventing.connectorFailed(name, error);
+               })
+               .build();
+         executor.submit(engine);
+      }
    }
 
    public void stop() throws IOException {
@@ -110,8 +129,8 @@ public class EngineWrapper {
       cacheService.stop(rule.backend().uri());
    }
 
-   public void notifyError() {
-      managedEngine.engineError(name);
+   public void notifyError(Throwable t) {
+      eventing.connectorFailed(name, t);
    }
 
    public void shutdownCacheService() {
@@ -134,17 +153,21 @@ public class EngineWrapper {
       // TODO: hardcoded value here
       List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
       switch (backend.keyType()) {
-         case PLAIN:
-            ColumnStringTranslator stringTranslator = new ColumnStringTranslator(columnsToUse, backend.plainSeparator());
-            keyTranslator = backend.prefixRuleName() ? new PrependStringTranslator(stringTranslator, name) : stringTranslator;
-            break;
-         case JSON:
-            ColumnJsonTranslator jsonTranslator = new ColumnJsonTranslator(columnsToUse);
+         case PLAIN -> {
+            var stringTranslator = new ColumnStringTranslator(columnsToUse,
+                  backend.plainSeparator());
+            keyTranslator = backend.prefixRuleName() ?
+                  new PrependStringTranslator(stringTranslator, name) :
+                  stringTranslator;
+         }
+         case JSON -> {
+            var jsonTranslator = new ColumnJsonTranslator(columnsToUse);
             // TODO: hardcoded value here
-            keyTranslator = backend.prefixRuleName() ? new PrependJsonTranslator(jsonTranslator, backend.jsonRuleName(), name) : jsonTranslator;
-            break;
-         default:
-            throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
+            keyTranslator = backend.prefixRuleName() ?
+                  new PrependJsonTranslator(jsonTranslator, backend.jsonRuleName(), name) :
+                  jsonTranslator;
+         }
+         default -> throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
       }
 
       return cacheService.backendForURI(backend.uri(), keyTranslator, valueTranslator);
