@@ -15,6 +15,9 @@ import javax.inject.Inject;
 
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.configuration.Rule;
+import io.gingersnapproject.cdc.event.Events;
+import io.gingersnapproject.cdc.event.NotificationManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +36,7 @@ public class ManagedEngine {
    Rule runtimeConfiguration;
 
    @Inject @All List<CacheService> services;
+   @Inject NotificationManager eventing;
 
     CacheService findCacheService(URI uri) {
       for (CacheService cacheService : services) {
@@ -50,7 +54,7 @@ public class ManagedEngine {
             Rule.SingleRule ruleConfiguration = entry.getValue();
             URI uri = ruleConfiguration.backend().uri();
             CacheService cacheService = findCacheService(uri);
-            EngineWrapper engine = new EngineWrapper(name, ruleConfiguration, cacheService, this);
+            EngineWrapper engine = new EngineWrapper(name, ruleConfiguration, cacheService, eventing);
             return new StartStopEngine(engine);
          });
          sse.start();
@@ -66,6 +70,21 @@ public class ManagedEngine {
          }
       } catch (IOException e) {
          log.error("Failed shutdown engine", e);
+      }
+   }
+
+   void engineFailed(@Observes Events.ConnectorFailedEvent ev) {
+       engineError(ev.name());
+   }
+
+   void backendFailed(@Observes Events.BackendFailedEvent ev) {
+       URI failedUri = ev.uri();
+      for (Map.Entry<String, Rule.SingleRule> entry : runtimeConfiguration.rules().entrySet()) {
+         Rule.SingleRule rule = entry.getValue();
+         if (rule.backend().uri().equals(failedUri)) {
+            engineError(entry.getKey());
+            break;
+         }
       }
    }
 

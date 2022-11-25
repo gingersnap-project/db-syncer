@@ -6,23 +6,25 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
-import org.apache.kafka.connect.util.Callback;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.cache.ErrorNotifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.gingersnapproject.cdc.event.NotificationManager;
+import io.gingersnapproject.util.ArcUtil;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
+import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.storage.OffsetBackingStore;
+import org.apache.kafka.connect.util.Callback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RemoteOffsetStore implements OffsetBackingStore {
    public static final String URI_CACHE = "offset.storage.remote.uri";
    public static final String TOPIC_NAME = "offset.storage.remote.topic";
    private static final Logger log = LoggerFactory.getLogger(RemoteOffsetStore.class);
 
+   private NotificationManager eventing;
    private OffsetBackend offsetBackend;
    private String topicName;
 
@@ -41,7 +43,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Getting {}", collection);
       return offsetBackend.get(collection).whenComplete((v, t) -> {
          if (t != null) {
-            ErrorNotifier.notifyError(topicName);
+            eventing.connectorFailed(topicName, t);
          }
       }).toCompletableFuture();
    }
@@ -51,7 +53,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Setting {}", map);
       return offsetBackend.set(map, callback).whenComplete((v, t) -> {
          if (t != null) {
-            ErrorNotifier.notifyError(topicName);
+            eventing.connectorFailed(topicName, t);
          }
       }).toCompletableFuture();
    }
@@ -72,5 +74,6 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       if (offsetBackend == null) {
          throw new IllegalStateException("No offset cache storage for uri: " + uri);
       }
+      eventing = ArcUtil.instance(NotificationManager.class);
    }
 }

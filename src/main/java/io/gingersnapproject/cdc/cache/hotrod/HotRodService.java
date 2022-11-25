@@ -5,12 +5,14 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import io.gingersnapproject.cdc.CacheBackend;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.cache.CacheService;
+import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -25,6 +27,8 @@ import io.quarkus.arc.lookup.LookupIfProperty;
 @LookupIfProperty(name = "service.hotrod.enabled", stringValue = "true", lookupIfMissing = true)
 @Singleton
 public class HotRodService implements CacheService {
+
+   @Inject NotificationManager eventing;
    ConcurrentMap<URI, RemoteCacheManager> otherURIs = new ConcurrentHashMap<>();
    private static final String CACHE_NAME = "debezium-cache";
    private static final String OFFSET_CACHE_NAME = "debezium-offset";
@@ -45,6 +49,7 @@ public class HotRodService implements CacheService {
          boolean successful = t == null;
          if (successful) {
             createCaches(rcm);
+            eventing.backendStartedEvent(uri);
          }
          return successful;
       });
@@ -60,17 +65,26 @@ public class HotRodService implements CacheService {
    }
 
    private RemoteCacheManager managerForURI(URI uri) {
-      return otherURIs.computeIfAbsent(uri, innerURI -> {
-         RemoteCacheManager remoteCacheManager = new RemoteCacheManager(innerURI);
+      return otherURIs.computeIfAbsent(uri, this::createManagerForURI);
+   }
+
+   private RemoteCacheManager createManagerForURI(URI uri) {
+      try {
+         RemoteCacheManager remoteCacheManager = new RemoteCacheManager(uri);
          createCaches(remoteCacheManager);
+         eventing.backendStartedEvent(uri);
          return remoteCacheManager;
-      });
+      } catch (Exception e) {
+         eventing.backendFailedEvent(uri, e);
+         return null;
+      }
    }
 
    @Override
    public CacheBackend backendForURI(URI uri, JsonTranslator<?> keyTranslator, JsonTranslator<?> valueTranslator) {
       RemoteCacheManager remoteCacheManager = managerForURI(uri);
-      return new HotRodCacheBackend(uri, remoteCacheManager.getCache(CACHE_NAME), keyTranslator, valueTranslator);
+      if (remoteCacheManager == null) return null;
+      return new HotRodCacheBackend(uri, remoteCacheManager.getCache(CACHE_NAME), keyTranslator, valueTranslator, eventing);
    }
 
    private void getOrCreateCacheBackendCache(RemoteCacheManager rcm) {
@@ -88,6 +102,7 @@ public class HotRodService implements CacheService {
    @Override
    public OffsetBackend offsetBackendForURI(URI uri) {
       RemoteCacheManager remoteCacheManager = managerForURI(uri);
+      if (remoteCacheManager == null) return null;
       return new HotRodOffsetBackend(remoteCacheManager.getCache(OFFSET_CACHE_NAME));
    }
 
@@ -103,6 +118,7 @@ public class HotRodService implements CacheService {
    @Override
    public SchemaBackend schemaBackendForURI(URI uri) {
       RemoteCacheManager remoteCacheManager = managerForURI(uri);
+      if (remoteCacheManager == null) return null;
       getOrCreateSchemaBackendCache(remoteCacheManager, SCHEMA_CACHE_NAME);
       MultimapCacheManager<String, String> remoteMultimapCacheManager = RemoteMultimapCacheManagerFactory.from(remoteCacheManager);
       // Support duplicates so it uses a list which is ordered
@@ -131,7 +147,13 @@ public class HotRodService implements CacheService {
    public void shutdown(URI uri) {
       RemoteCacheManager rcm = otherURIs.remove(uri);
       if (rcm != null) {
-         rcm.stopAsync();
+         rcm.stopAsync().whenComplete((ignore, t) -> {
+            if (t != null) {
+               eventing.backendFailedEvent(uri, t);
+            } else {
+               eventing.backendStoppedEvent(uri);
+            }
+         });
       }
    }
 }

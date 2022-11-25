@@ -5,9 +5,8 @@ import java.util.function.Consumer;
 
 import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.cache.ErrorNotifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.gingersnapproject.cdc.event.NotificationManager;
+import io.gingersnapproject.util.ArcUtil;
 
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.AbstractSchemaHistory;
@@ -17,12 +16,15 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RemoteSchemaHistory extends AbstractSchemaHistory {
    private static final Logger log = LoggerFactory.getLogger(RemoteSchemaHistory.class);
    public static final String URI_CACHE = CONFIGURATION_FIELD_PREFIX_STRING + "remote.uri";
    public static final String TOPIC_NAME = CONFIGURATION_FIELD_PREFIX_STRING + "remote.topic";
 
+   private NotificationManager eventing;
    private SchemaBackend schemaBackend;
    private String topicName;
 
@@ -32,7 +34,7 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
       try {
          schemaBackend.storeRecord(record);
       } catch (Throwable t) {
-         ErrorNotifier.notifyError(topicName);
+         eventing.connectorFailed(topicName, t);
          throw t;
       }
    }
@@ -43,7 +45,7 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
       try {
          schemaBackend.recoverRecords(records);
       } catch (Throwable t) {
-         ErrorNotifier.notifyError(topicName);
+         eventing.connectorFailed(topicName, t);
          throw t;
       }
    }
@@ -64,6 +66,7 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
       if (schemaBackend == null) {
          throw new IllegalStateException("No schema cache storage for uri: " + uri);
       }
+      eventing = ArcUtil.instance(NotificationManager.class);
    }
 
    @Override
