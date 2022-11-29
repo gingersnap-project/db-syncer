@@ -7,7 +7,6 @@ import io.gingersnapproject.cdc.CacheBackend;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.configuration.Rule;
-import io.gingersnapproject.cdc.translation.JsonTranslator;
 
 public interface CacheService {
    boolean supportsURI(URI uri);
@@ -16,7 +15,7 @@ public interface CacheService {
 
    CompletionStage<Void> stop(URI uri);
 
-   CacheBackend backendForRule(String name, Rule.SingleRule rule);
+   CacheBackend backendForRule(String name, Rule rule);
 
    OffsetBackend offsetBackendForURI(URI uri);
 

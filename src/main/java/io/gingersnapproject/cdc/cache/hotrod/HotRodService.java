@@ -16,6 +16,7 @@ import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.configuration.Backend;
+import io.gingersnapproject.cdc.configuration.Configuration;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
 import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
@@ -40,6 +41,9 @@ import io.quarkus.arc.lookup.LookupIfProperty;
 public class HotRodService implements CacheService {
 
    @Inject NotificationManager eventing;
+
+   @Inject Configuration config;
+
    ConcurrentMap<URI, RuleCacheManager> otherURIs = new ConcurrentHashMap<>();
    private static final String OFFSET_CACHE_NAME = "debezium-offset";
    private static final String SCHEMA_CACHE_NAME = "debezium-schema";
@@ -75,7 +79,7 @@ public class HotRodService implements CacheService {
    }
 
    @Override
-   public CacheBackend backendForRule(String name, Rule.SingleRule rule) {
+   public CacheBackend backendForRule(String name, Rule rule) {
       Backend backend = rule.backend();
       JsonTranslator<?> keyTranslator;
       JsonTranslator<?> valueTranslator = backend.columns().isPresent() ?
@@ -100,7 +104,7 @@ public class HotRodService implements CacheService {
          }
          default -> throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
       }
-      return backendForRule(name, backend.uri(), keyTranslator, valueTranslator);
+      return backendForRule(name, config.cache().uri(), keyTranslator, valueTranslator);
    }
 
    private RuleCacheManager getManagerFor(String name, URI uri) {

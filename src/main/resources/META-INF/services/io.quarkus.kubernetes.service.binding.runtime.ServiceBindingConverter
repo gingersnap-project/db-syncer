@@ -1,0 +1,2 @@
+io.gingersnapproject.k8s.configuration.CacheServiceBindingConverter
+io.gingersnapproject.k8s.configuration.DatabaseServiceBindingConverter

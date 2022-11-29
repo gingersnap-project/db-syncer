@@ -1,14 +1,11 @@
 package io.gingersnapproject.cdc.configuration;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
 import io.smallrye.config.WithDefault;
 
 public interface Backend {
-
-   URI uri();
 
    @WithDefault("PLAIN")
    KeyType keyType();

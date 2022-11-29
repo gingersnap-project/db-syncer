@@ -26,7 +26,7 @@ public enum DatabaseProvider {
          return properties;
       }
    },
-   PGSQL {
+   POSTGRESQL {
       @Override
       public Properties databaseProperties(Connector connector, Database database) {
          Properties properties = new Properties();
@@ -44,7 +44,7 @@ public enum DatabaseProvider {
          return properties;
       }
    },
-   MSSQL {
+   SQLSERVER {
       @Override
       public Properties databaseProperties(Connector connector, Database database) {
          Properties properties = new Properties();
