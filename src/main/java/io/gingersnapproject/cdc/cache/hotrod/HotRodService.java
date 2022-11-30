@@ -15,7 +15,6 @@ import io.gingersnapproject.cdc.CacheBackend;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.configuration.Backend;
 import io.gingersnapproject.cdc.configuration.Configuration;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
@@ -80,29 +79,28 @@ public class HotRodService implements CacheService {
 
    @Override
    public CacheBackend backendForRule(String name, Rule rule) {
-      Backend backend = rule.backend();
       JsonTranslator<?> keyTranslator;
-      JsonTranslator<?> valueTranslator = backend.columns().isPresent() ?
-            new ColumnJsonTranslator(backend.columns().get()) : IdentityTranslator.getInstance();
-      Optional<List<String>> optionalKeys = backend.keyColumns();
+      JsonTranslator<?> valueTranslator = rule.columns().isPresent() ?
+            new ColumnJsonTranslator(rule.columns().get()) : IdentityTranslator.getInstance();
+      Optional<List<String>> optionalKeys = rule.keyColumns();
       // TODO: hardcoded value here
       List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
-      switch (backend.keyType()) {
+      switch (rule.keyType()) {
          case PLAIN -> {
             ColumnStringTranslator stringTranslator = new ColumnStringTranslator(columnsToUse,
-                  backend.plainSeparator());
-            keyTranslator = backend.prefixRuleName() ?
+                  rule.plainSeparator());
+            keyTranslator = rule.prefixRuleName() ?
                   new PrependStringTranslator(stringTranslator, name) :
                   stringTranslator;
          }
          case JSON -> {
             ColumnJsonTranslator jsonTranslator = new ColumnJsonTranslator(columnsToUse);
             // TODO: hardcoded value here
-            keyTranslator = backend.prefixRuleName() ?
-                  new PrependJsonTranslator(jsonTranslator, backend.jsonRuleName(), name) :
+            keyTranslator = rule.prefixRuleName() ?
+                  new PrependJsonTranslator(jsonTranslator, rule.jsonRuleName(), name) :
                   jsonTranslator;
          }
-         default -> throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
+         default -> throw new IllegalArgumentException("Key type: " + rule.keyType() + " not supported!");
       }
       return backendForRule(name, config.cache().uri(), keyTranslator, valueTranslator);
    }

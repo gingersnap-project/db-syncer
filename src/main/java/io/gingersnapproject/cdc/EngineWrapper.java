@@ -3,9 +3,6 @@ package io.gingersnapproject.cdc;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY;
 
 import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -19,7 +16,6 @@ import io.debezium.engine.DebeziumEngine;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.chain.EventProcessingChain;
 import io.gingersnapproject.cdc.chain.EventProcessingChainFactory;
-import io.gingersnapproject.cdc.configuration.Backend;
 import io.gingersnapproject.cdc.configuration.Configuration;
 import io.gingersnapproject.cdc.configuration.Connector;
 import io.gingersnapproject.cdc.configuration.Database;
@@ -29,12 +25,6 @@ import io.gingersnapproject.cdc.consumer.BatchConsumer;
 import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.remote.RemoteOffsetStore;
 import io.gingersnapproject.cdc.remote.RemoteSchemaHistory;
-import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
-import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
-import io.gingersnapproject.cdc.translation.IdentityTranslator;
-import io.gingersnapproject.cdc.translation.JsonTranslator;
-import io.gingersnapproject.cdc.translation.PrependJsonTranslator;
-import io.gingersnapproject.cdc.translation.PrependStringTranslator;
 
 public class EngineWrapper {
 
