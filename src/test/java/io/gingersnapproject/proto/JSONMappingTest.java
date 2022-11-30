@@ -8,7 +8,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
@@ -66,27 +65,17 @@ public class JSONMappingTest {
     }
 
     @Test
-    public void testProtobufToJSON() {
-        try {
-            String eRuleJSON = JsonFormat.printer().print(eRule);
-            assertEquals(eRuleTestCaseJSON, eRuleJSON);
-        } catch (InvalidProtocolBufferException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public void testProtobufToJSON() throws Exception {
+        String eRuleJSON = JsonFormat.printer().print(eRule);
+        assertEquals(eRuleTestCaseJSON, eRuleJSON);
     }
 
     @Test
-    public void testJSONToProtobuf() {
+    public void testJSONToProtobuf() throws Exception {
         EagerCacheRuleSpec.Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
-        try {
-            JsonFormat.parser().ignoringUnknownFields().merge(eRuleTestCaseJSON, eRuleBuilder);
-            EagerCacheRuleSpec eRuleFromJson = eRuleBuilder.build();
-            assertEquals(eRule, eRuleFromJson);
-        } catch (InvalidProtocolBufferException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        JsonFormat.parser().ignoringUnknownFields().merge(eRuleTestCaseJSON, eRuleBuilder);
+        EagerCacheRuleSpec eRuleFromJson = eRuleBuilder.build();
+        assertEquals(eRule, eRuleFromJson);
     }
 
 }
