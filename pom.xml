@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.gingersnap-project</groupId>
   <artifactId>db-syncer</artifactId>
@@ -16,6 +16,9 @@
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
     <version.debezium>2.0.0.Final</version.debezium>
+    <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
+    <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
+    <org.gingersnap.api.basedir>${project.basedir}/gingersnap-api</org.gingersnap.api.basedir>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -113,6 +116,15 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-grpc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java-util</artifactId>
+      <version>3.11.4</version>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
     </dependency>
@@ -174,6 +186,63 @@
                 <maven.home>${maven.home}</maven.home>
               </systemPropertyVariables>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>${os-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>initialize</phase>
+            <goals>
+              <goal>detect</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>${protobuf-maven-plugin.version}</version>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>test-compile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <protoSourceRoot>${org.gingersnap.api.basedir}</protoSourceRoot>
+          <includes>
+            <include>config/**/*.proto</include>
+          </includes>
+          <protocArtifact>com.google.protobuf:protoc:4.0.0-rc-2:exe:${os.detected.classifier}</protocArtifact>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <inherited>false</inherited> <!-- only execute these in the parent -->
+        <executions>
+          <execution>
+            <id>git submodule update</id>
+            <phase>initialize</phase>
+            <configuration>
+              <executable>git</executable>
+              <arguments>
+                <argument>submodule</argument>
+                <argument>update</argument>
+                <argument>--init</argument>
+                <argument>--recursive</argument>
+              </arguments>
+            </configuration>
+            <goals>
+              <goal>exec</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
