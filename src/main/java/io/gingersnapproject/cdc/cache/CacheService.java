@@ -6,6 +6,7 @@ import java.util.concurrent.CompletionStage;
 import io.gingersnapproject.cdc.CacheBackend;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
+import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 
 public interface CacheService {
@@ -15,7 +16,7 @@ public interface CacheService {
 
    CompletionStage<Void> stop(URI uri);
 
-   CacheBackend backendForURI(URI uri, JsonTranslator<?> keyTranslator, JsonTranslator<?> valueTranslator);
+   CacheBackend backendForRule(String name, Rule.SingleRule rule);
 
    OffsetBackend offsetBackendForURI(URI uri);
 
