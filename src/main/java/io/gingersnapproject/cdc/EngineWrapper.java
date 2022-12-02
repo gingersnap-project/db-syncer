@@ -97,7 +97,7 @@ public class EngineWrapper {
    }
 
    public void start() {
-      CacheBackend c = createCacheBackend(name, rule.backend());
+      CacheBackend c = createCacheBackend(name, rule);
       if (c != null) {
          EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
          this.engine = DebeziumEngine.create(Connect.class)
@@ -145,31 +145,7 @@ public class EngineWrapper {
       return name;
    }
 
-   private CacheBackend createCacheBackend(String name, Backend backend) {
-      JsonTranslator<?> keyTranslator;
-      JsonTranslator<?> valueTranslator = backend.columns().isPresent() ?
-            new ColumnJsonTranslator(backend.columns().get()) : IdentityTranslator.getInstance();
-      Optional<List<String>> optionalKeys = backend.keyColumns();
-      // TODO: hardcoded value here
-      List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
-      switch (backend.keyType()) {
-         case PLAIN -> {
-            var stringTranslator = new ColumnStringTranslator(columnsToUse,
-                  backend.plainSeparator());
-            keyTranslator = backend.prefixRuleName() ?
-                  new PrependStringTranslator(stringTranslator, name) :
-                  stringTranslator;
-         }
-         case JSON -> {
-            var jsonTranslator = new ColumnJsonTranslator(columnsToUse);
-            // TODO: hardcoded value here
-            keyTranslator = backend.prefixRuleName() ?
-                  new PrependJsonTranslator(jsonTranslator, backend.jsonRuleName(), name) :
-                  jsonTranslator;
-         }
-         default -> throw new IllegalArgumentException("Key type: " + backend.keyType() + " not supported!");
-      }
-
-      return cacheService.backendForURI(backend.uri(), keyTranslator, valueTranslator);
+   private CacheBackend createCacheBackend(String name, Rule.SingleRule rule) {
+      return cacheService.backendForRule(name, rule);
    }
 }
