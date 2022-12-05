@@ -5,7 +5,7 @@ import io.gingersnapproject.cdc.configuration.Rule;
 
 public class EventProcessingChainFactory {
 
-   public static EventProcessingChain create(Rule.SingleRule rule, CacheBackend backend) {
+   public static EventProcessingChain create(Rule rule, CacheBackend backend) {
       return EventProcessingChain.chained(
             // The filter link should always be the head.
             new EventFilterLink(rule),

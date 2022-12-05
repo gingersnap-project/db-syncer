@@ -1,22 +1,32 @@
 package io.gingersnapproject.cdc.configuration;
 
-import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithName;
+import io.smallrye.config.WithDefault;
 
-@ConfigMapping(prefix = "gingersnap")
 public interface Rule {
-
-   @WithName("rule")
-   Map<String, SingleRule> rules();
-
-   interface SingleRule {
 
       Connector connector();
 
-      Database database();
+      @WithDefault("PLAIN")
+      KeyType keyType();
 
-      Backend backend();
-   }
+      @WithDefault("true")
+      boolean prefixRuleName();
+
+      @WithDefault("|")
+      String plainSeparator();
+
+      @WithDefault("rule")
+      String jsonRuleName();
+
+      Optional<List<String>> keyColumns();
+
+      Optional<List<String>> columns();
+
+      enum KeyType {
+            PLAIN,
+            JSON;
+      }
 }

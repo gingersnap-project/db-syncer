@@ -21,6 +21,9 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.gingersnapproject.cdc.cache.CacheService;
+import io.gingersnapproject.cdc.configuration.Configuration;
+import io.gingersnapproject.cdc.configuration.Rule;
 import io.quarkus.arc.All;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -33,7 +36,7 @@ public class ManagedEngine {
    private final Map<String, StartStopEngine> engines = new ConcurrentHashMap<>();
 
    @Inject
-   Rule runtimeConfiguration;
+   Configuration config;
 
    @Inject @All List<CacheService> services;
    @Inject NotificationManager eventing;
@@ -49,12 +52,12 @@ public class ManagedEngine {
 
    public void start(@Observes StartupEvent ignore) {
       log.info("Starting service");
-      for (Map.Entry<String, Rule.SingleRule> entry : runtimeConfiguration.rules().entrySet()) {
+      for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
          StartStopEngine sse = engines.computeIfAbsent(entry.getKey(), name -> {
-            Rule.SingleRule ruleConfiguration = entry.getValue();
-            URI uri = ruleConfiguration.backend().uri();
+            Rule ruleConfiguration = entry.getValue();
+            URI uri = config.cache().uri();
             CacheService cacheService = findCacheService(uri);
-            EngineWrapper engine = new EngineWrapper(name, ruleConfiguration, cacheService, eventing);
+            EngineWrapper engine = new EngineWrapper(name, config, ruleConfiguration, cacheService, eventing);
             return new StartStopEngine(engine);
          });
          sse.start();
@@ -78,13 +81,9 @@ public class ManagedEngine {
    }
 
    void backendFailed(@Observes Events.BackendFailedEvent ev) {
-       URI failedUri = ev.uri();
-      for (Map.Entry<String, Rule.SingleRule> entry : runtimeConfiguration.rules().entrySet()) {
-         Rule.SingleRule rule = entry.getValue();
-         if (rule.backend().uri().equals(failedUri)) {
-            engineError(entry.getKey());
-            break;
-         }
+      for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
+         engineError(entry.getKey());
+         break;
       }
    }
 

@@ -19,9 +19,9 @@ public class EventFilterLink extends EventProcessingChain {
 
    private static final Logger log = LoggerFactory.getLogger(EventFilterLink.class);
 
-   private final Rule.SingleRule rule;
+   private final Rule rule;
 
-   public EventFilterLink(Rule.SingleRule rule) {
+   public EventFilterLink(Rule rule) {
       this.rule = rule;
    }
 
