@@ -60,7 +60,7 @@ public class CacheRuleInformer {
 
    private static final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
       private interface SendEventFunc{
-         public void sendEvent(String name, EagerCacheRuleSpec rule);
+         void sendEvent(String name, EagerCacheRuleSpec rule);
       }
       private void processConfigMapAndSend(Set<Map.Entry<String,String>> entries, SendEventFunc f) {
          for (Entry<String, String> entry : entries) {
@@ -68,7 +68,7 @@ public class CacheRuleInformer {
             try {
                JsonFormat.parser().ignoringUnknownFields().merge(entry.getValue(), eRuleBuilder);
             } catch (InvalidProtocolBufferException e) {
-               log.error("Cannot parse eager rule with name {}", entry.getKey());
+               log.error("Cannot parse eager rule with name {}", entry.getKey(), e);
                log.debug("{}",e);
             }
             f.sendEvent(entry.getKey(), eRuleBuilder.build());
@@ -101,7 +101,7 @@ public class CacheRuleInformer {
          // Get the changed keys. From the old set remove
          // - keys which aren't in the new set (deleted)
          // - keys which are in the new set with same value (unchanged)
-         changed.removeIf(arg0 -> { return !newMap.containsKey(arg0.getKey()) || arg0.getValue().equals(newMap.get(arg0.getKey())); });
+         changed.removeIf(arg0 -> !newMap.containsKey(arg0.getKey()) || arg0.getValue().equals(newMap.get(arg0.getKey())));
 
          processConfigMapAndSend(changed, (name,rule) -> {log.info("calling DynamicRuleManagement.updateRule({},{}", name, rule.toString());});
          processConfigMapAndSend(removed, (name,rule) -> {log.info("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());});
