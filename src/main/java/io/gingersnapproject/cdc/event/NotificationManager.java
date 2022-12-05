@@ -1,7 +1,5 @@
 package io.gingersnapproject.cdc.event;
 
-import java.net.URI;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
@@ -39,15 +37,15 @@ public class NotificationManager {
       connectorStoppedEvent.fire(new Events.ConnectorStoppedEvent(name));
    }
 
-   public void backendStartedEvent(URI uri) {
-      backendStartedEvent.fire(new Events.BackendStartedEvent(uri));
+   public void backendStartedEvent() {
+      backendStartedEvent.fire(new Events.BackendStartedEvent());
    }
 
-   public void backendFailedEvent(URI uri, Throwable throwable) {
-      backendFailedEvent.fire(new Events.BackendFailedEvent(uri, throwable));
+   public void backendFailedEvent(Throwable throwable) {
+      backendFailedEvent.fire(new Events.BackendFailedEvent(throwable));
    }
 
-   public void backendStoppedEvent(URI uri) {
-      backendStoppedEvent.fire(new Events.BackendStoppedEvent(uri));
+   public void backendStoppedEvent() {
+      backendStoppedEvent.fire(new Events.BackendStoppedEvent());
    }
 }

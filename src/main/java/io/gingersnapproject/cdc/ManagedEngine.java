@@ -1,8 +1,6 @@
 package io.gingersnapproject.cdc;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -10,45 +8,35 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-
-import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.configuration.Rule;
-import io.gingersnapproject.cdc.event.Events;
-import io.gingersnapproject.cdc.event.NotificationManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.configuration.Configuration;
-import io.quarkus.arc.All;
+import io.gingersnapproject.cdc.configuration.Rule;
+import io.gingersnapproject.cdc.event.Events;
+import io.gingersnapproject.cdc.event.NotificationManager;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
-@ApplicationScoped
+@Dependent
 public class ManagedEngine implements DynamicRuleManagement {
    private static final Logger log = LoggerFactory.getLogger(ManagedEngine.class);
    private static final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(r ->
          new Thread(r, "scheduled-engine-error-handler"));
    private final Map<String, StartStopEngine> engines = new ConcurrentHashMap<>();
 
-   @Inject
-   Configuration config;
+   @Inject Configuration config;
 
-   @Inject @All List<CacheService> services;
+   @Inject  CacheService cacheService;
+
    @Inject NotificationManager eventing;
 
-    private CacheService findCacheService(URI uri) {
-      for (CacheService cacheService : services) {
-         if (cacheService.supportsURI(uri)) {
-            return cacheService;
-         }
-      }
-      throw new IllegalArgumentException("Unsupported URI received: " + uri + " ensure service is running if correct!");
-   }
-
-   void start(@Observes StartupEvent ignore) {
+   public void start(@Observes StartupEvent ignore) {
       log.info("Starting service");
       for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
          addRule(entry.getKey(), entry.getValue());
@@ -116,12 +104,9 @@ public class ManagedEngine implements DynamicRuleManagement {
 
    @Override
    public void addRule(String name, Rule rule) {
-      StartStopEngine sse = engines.computeIfAbsent(name, ignore -> {
-         URI uri = config.cache().uri();
-         CacheService cacheService = findCacheService(uri);
-         EngineWrapper engine = new EngineWrapper(name, config, rule, cacheService, eventing);
-         return new StartStopEngine(engine);
-      });
+      StartStopEngine sse = engines.computeIfAbsent(name, ignore ->
+            new StartStopEngine(new EngineWrapper(name, config, rule, cacheService, eventing))
+      );
       sse.start();
    }
 
@@ -203,7 +188,6 @@ public class ManagedEngine implements DynamicRuleManagement {
                   task.close();
                   task = null;
                }
-               engine.shutdownCacheService();
                status = Status.SHUTDOWN;
          }
       }
