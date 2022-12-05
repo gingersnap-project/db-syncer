@@ -7,9 +7,11 @@ import java.util.Map.Entry;
 
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Instance;
+import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.k8s.configuration.KubernetesConfiguration;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec.Builder;
@@ -35,6 +37,8 @@ public class CacheRuleInformer {
    @Inject Instance<KubernetesClient> client;
    @Inject
    KubernetesConfiguration configuration;
+   @Inject
+   EagerCacheRuleSpecAdapterProducer singleRuleProducer;
    private SharedIndexInformer<ConfigMap> informer;
 
    void startWatching(@Observes StartupEvent ignore) {
@@ -113,4 +117,29 @@ public class CacheRuleInformer {
          processConfigMapAndSend(obj.getData().entrySet(), (name,rule) -> {log.info("calling DynamicRuleManagement.deleteRule({},{}", name, rule.toString());});
       }
    }
+}
+
+// Used only by CacheRuleInformer
+class EagerCacheRuleSpecAdapter implements Rule.SingleRule
+{
+   public EagerCacheRuleSpecAdapter(Configuration config) {
+   }
+
+    @Override
+    public Connector connector() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Database database() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Backend backend() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
