@@ -11,6 +11,7 @@ import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import io.gingersnapproject.cdc.configuration.Configuration;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.k8s.configuration.KubernetesConfiguration;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
@@ -37,8 +38,6 @@ public class CacheRuleInformer {
    @Inject Instance<KubernetesClient> client;
    @Inject
    KubernetesConfiguration configuration;
-   @Inject
-   EagerCacheRuleSpecAdapterProducer singleRuleProducer;
    private SharedIndexInformer<ConfigMap> informer;
 
    void startWatching(@Observes StartupEvent ignore) {
@@ -120,7 +119,7 @@ public class CacheRuleInformer {
 }
 
 // Used only by CacheRuleInformer
-class EagerCacheRuleSpecAdapter implements Rule.SingleRule
+class EagerCacheRuleSpecAdapter implements Rule
 {
    public EagerCacheRuleSpecAdapter(Configuration config) {
    }
