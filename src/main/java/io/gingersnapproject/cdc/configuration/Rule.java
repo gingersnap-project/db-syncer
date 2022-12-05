@@ -12,14 +12,8 @@ public interface Rule {
       @WithDefault("PLAIN")
       KeyType keyType();
 
-      @WithDefault("true")
-      boolean prefixRuleName();
-
       @WithDefault("|")
       String plainSeparator();
-
-      @WithDefault("rule")
-      String jsonRuleName();
 
       Optional<List<String>> keyColumns();
 

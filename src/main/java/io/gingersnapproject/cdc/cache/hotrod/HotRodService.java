@@ -11,20 +11,6 @@ import java.util.concurrent.ConcurrentMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import io.gingersnapproject.cdc.CacheBackend;
-import io.gingersnapproject.cdc.OffsetBackend;
-import io.gingersnapproject.cdc.SchemaBackend;
-import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.configuration.Configuration;
-import io.gingersnapproject.cdc.configuration.Rule;
-import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
-import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
-import io.gingersnapproject.cdc.translation.IdentityTranslator;
-import io.gingersnapproject.cdc.event.NotificationManager;
-import io.gingersnapproject.cdc.translation.JsonTranslator;
-import io.gingersnapproject.cdc.translation.PrependJsonTranslator;
-import io.gingersnapproject.cdc.translation.PrependStringTranslator;
-
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
@@ -33,6 +19,17 @@ import org.infinispan.commons.api.CacheContainerAdmin;
 import org.infinispan.commons.configuration.StringConfiguration;
 import org.infinispan.commons.dataconversion.MediaType;
 
+import io.gingersnapproject.cdc.CacheBackend;
+import io.gingersnapproject.cdc.OffsetBackend;
+import io.gingersnapproject.cdc.SchemaBackend;
+import io.gingersnapproject.cdc.cache.CacheService;
+import io.gingersnapproject.cdc.configuration.Configuration;
+import io.gingersnapproject.cdc.configuration.Rule;
+import io.gingersnapproject.cdc.event.NotificationManager;
+import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
+import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
+import io.gingersnapproject.cdc.translation.IdentityTranslator;
+import io.gingersnapproject.cdc.translation.JsonTranslator;
 import io.quarkus.arc.lookup.LookupIfProperty;
 
 @LookupIfProperty(name = "service.hotrod.enabled", stringValue = "true", lookupIfMissing = true)
@@ -79,29 +76,16 @@ public class HotRodService implements CacheService {
 
    @Override
    public CacheBackend backendForRule(String name, Rule rule) {
-      JsonTranslator<?> keyTranslator;
       JsonTranslator<?> valueTranslator = rule.columns().isPresent() ?
             new ColumnJsonTranslator(rule.columns().get()) : IdentityTranslator.getInstance();
       Optional<List<String>> optionalKeys = rule.keyColumns();
       // TODO: hardcoded value here
       List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
-      switch (rule.keyType()) {
-         case PLAIN -> {
-            ColumnStringTranslator stringTranslator = new ColumnStringTranslator(columnsToUse,
+      JsonTranslator<?> keyTranslator = switch (rule.keyType()) {
+         case PLAIN -> new ColumnStringTranslator(columnsToUse,
                   rule.plainSeparator());
-            keyTranslator = rule.prefixRuleName() ?
-                  new PrependStringTranslator(stringTranslator, name) :
-                  stringTranslator;
-         }
-         case JSON -> {
-            ColumnJsonTranslator jsonTranslator = new ColumnJsonTranslator(columnsToUse);
-            // TODO: hardcoded value here
-            keyTranslator = rule.prefixRuleName() ?
-                  new PrependJsonTranslator(jsonTranslator, rule.jsonRuleName(), name) :
-                  jsonTranslator;
-         }
-         default -> throw new IllegalArgumentException("Key type: " + rule.keyType() + " not supported!");
-      }
+         case JSON -> new ColumnJsonTranslator(columnsToUse);
+      };
       return backendForRule(name, config.cache().uri(), keyTranslator, valueTranslator);
    }
 
