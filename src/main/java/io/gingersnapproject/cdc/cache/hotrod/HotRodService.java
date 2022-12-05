@@ -1,13 +1,10 @@
 package io.gingersnapproject.cdc.cache.hotrod;
 
-import java.net.URI;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -30,9 +27,9 @@ import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
 import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
 import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
-import io.quarkus.arc.lookup.LookupIfProperty;
+import io.quarkus.runtime.ShutdownEvent;
+import io.quarkus.runtime.StartupEvent;
 
-@LookupIfProperty(name = "service.hotrod.enabled", stringValue = "true", lookupIfMissing = true)
 @Singleton
 public class HotRodService implements CacheService {
 
@@ -40,38 +37,51 @@ public class HotRodService implements CacheService {
 
    @Inject Configuration config;
 
-   ConcurrentMap<URI, RuleCacheManager> otherURIs = new ConcurrentHashMap<>();
+   volatile RemoteCacheManager rcm;
+
+   public void start(@Observes StartupEvent e) {
+      rcm = new RemoteCacheManager(config.cache().uri());
+      createCaches();
+      eventing.backendStartedEvent();
+   }
+
+   public void shutdown(@Observes ShutdownEvent e) {
+      if (rcm != null) {
+         rcm.stopAsync().whenComplete((ignore, t) -> {
+            if (t != null) {
+               eventing.backendFailedEvent(t);
+            } else {
+               eventing.backendStoppedEvent();
+            }
+         });
+         rcm = null;
+      }
+   }
+
    private static final String OFFSET_CACHE_NAME = "debezium-offset";
    private static final String SCHEMA_CACHE_NAME = "debezium-schema";
 
    @Override
-   public boolean supportsURI(URI uri) {
-      return uri.getScheme().startsWith("hotrod");
-   }
-
-   @Override
-   public CompletionStage<Boolean> reconnect(URI uri) {
-      RuleCacheManager rcm = otherURIs.get(uri);
+   public CompletionStage<Boolean> reconnect() {
       if (rcm == null) {
-         throw new IllegalStateException("URI " + uri + " not present to restart!");
+         throw new IllegalStateException("RemoteCacheManager not initialized");
       }
-      return rcm.manager.startAsync().handle((__, t) -> {
+      return rcm.startAsync().handle((__, t) -> {
          boolean successful = t == null;
          if (successful) {
-            createCaches(rcm.rule, rcm.manager);
-            eventing.backendStartedEvent(uri);
+            createCaches();
+            eventing.backendStartedEvent();
          }
          return successful;
       });
    }
 
    @Override
-   public CompletionStage<Void> stop(URI uri) {
-      RuleCacheManager rcm = otherURIs.get(uri);
+   public CompletionStage<Void> stop() {
       if (rcm == null) {
-         throw new IllegalStateException("URI " + uri + " not present to stop!");
+         throw new IllegalStateException("RemoteCacheManager not initialized");
       }
-      return rcm.manager.stopAsync();
+      return rcm.stopAsync();
    }
 
    @Override
@@ -86,32 +96,11 @@ public class HotRodService implements CacheService {
                   rule.plainSeparator());
          case JSON -> new ColumnJsonTranslator(columnsToUse);
       };
-      return backendForRule(name, config.cache().uri(), keyTranslator, valueTranslator);
-   }
 
-   private RuleCacheManager getManagerFor(String name, URI uri) {
-      return otherURIs.computeIfAbsent(uri, ignore -> {
-         try {
-            RemoteCacheManager remoteCacheManager = new RemoteCacheManager(uri);
-            createCaches(name, remoteCacheManager);
-            eventing.backendStartedEvent(uri);
-            return new RuleCacheManager(name, remoteCacheManager);
-         } catch (Exception e) {
-            eventing.backendFailedEvent(uri, e);
-            return null;
-         }
-      });
-   }
+      if (rcm == null)
+         throw new IllegalStateException("RemoteCacheManager not initialized");
 
-   private RemoteCacheManager managerForURI(URI uri) {
-      RuleCacheManager rcm = Objects.requireNonNull(otherURIs.get(uri), "Manager for " + uri + " was not created yet");
-      return rcm.manager;
-   }
-
-   private CacheBackend backendForRule(String name, URI uri, JsonTranslator<?> keyTranslator, JsonTranslator<?> valueTranslator) {
-      RuleCacheManager rcm = getManagerFor(name, uri);
-      if (rcm == null) return null;
-      return new HotRodCacheBackend(uri, rcm.manager.getCache(name), keyTranslator, valueTranslator, eventing);
+      return new HotRodCacheBackend(rcm.getCache(name), keyTranslator, valueTranslator, eventing);
    }
 
    private void getOrCreateCacheBackendCache(String name, RemoteCacheManager rcm) {
@@ -127,10 +116,8 @@ public class HotRodService implements CacheService {
    }
 
    @Override
-   public OffsetBackend offsetBackendForURI(URI uri) {
-      RemoteCacheManager remoteCacheManager = managerForURI(uri);
-      if (remoteCacheManager == null) return null;
-      return new HotRodOffsetBackend(remoteCacheManager.getCache(OFFSET_CACHE_NAME));
+   public OffsetBackend offsetBackend() {
+      return new HotRodOffsetBackend(rcm.getCache(OFFSET_CACHE_NAME));
    }
 
    private void getOrCreateOffsetBackendCache(String name, RemoteCacheManager rcm) {
@@ -143,11 +130,9 @@ public class HotRodService implements CacheService {
    }
 
    @Override
-   public SchemaBackend schemaBackendForURI(URI uri) {
-      RemoteCacheManager remoteCacheManager = managerForURI(uri);
-      if (remoteCacheManager == null) return null;
-      getOrCreateSchemaBackendCache(SCHEMA_CACHE_NAME, remoteCacheManager);
-      MultimapCacheManager<String, String> remoteMultimapCacheManager = RemoteMultimapCacheManagerFactory.from(remoteCacheManager);
+   public SchemaBackend schemaBackend() {
+      getOrCreateSchemaBackendCache(SCHEMA_CACHE_NAME, rcm);
+      MultimapCacheManager<String, String> remoteMultimapCacheManager = RemoteMultimapCacheManagerFactory.from(rcm);
       // Support duplicates so it uses a list which is ordered
       return new HotRodSchemaBackend(remoteMultimapCacheManager.get(SCHEMA_CACHE_NAME, true));
    }
@@ -164,25 +149,9 @@ public class HotRodService implements CacheService {
             "</local-cache>"));
    }
 
-   private void createCaches(String ruleName, RemoteCacheManager remoteCacheManager) {
-      getOrCreateCacheBackendCache(ruleName, remoteCacheManager);
-      getOrCreateOffsetBackendCache(OFFSET_CACHE_NAME, remoteCacheManager);
-      getOrCreateSchemaBackendCache(SCHEMA_CACHE_NAME, remoteCacheManager);
+   private void createCaches() {
+      config.rules().keySet().forEach(r -> getOrCreateCacheBackendCache(r, rcm));
+      getOrCreateOffsetBackendCache(OFFSET_CACHE_NAME, rcm);
+      getOrCreateSchemaBackendCache(SCHEMA_CACHE_NAME, rcm);
    }
-
-   @Override
-   public void shutdown(URI uri) {
-      RuleCacheManager rcm = otherURIs.remove(uri);
-      if (rcm != null) {
-         rcm.manager.stopAsync().whenComplete((ignore, t) -> {
-            if (t != null) {
-               eventing.backendFailedEvent(uri, t);
-            } else {
-               eventing.backendStoppedEvent(uri);
-            }
-         });
-      }
-   }
-
-   private record RuleCacheManager(String rule, RemoteCacheManager manager) { }
 }

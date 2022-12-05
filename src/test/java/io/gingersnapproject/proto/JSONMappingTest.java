@@ -15,9 +15,7 @@ import io.gingersnapproject.proto.api.config.v1alpha1.Key;
 import io.gingersnapproject.proto.api.config.v1alpha1.KeyFormat;
 import io.gingersnapproject.proto.api.config.v1alpha1.NamespacedObjectReference;
 import io.gingersnapproject.proto.api.config.v1alpha1.Value;
-import io.quarkus.test.junit.QuarkusTest;
 
-@QuarkusTest
 public class JSONMappingTest {
     private static String eRuleTestCaseJSON;
     private static EagerCacheRuleSpec eRule;
@@ -77,5 +75,4 @@ public class JSONMappingTest {
         EagerCacheRuleSpec eRuleFromJson = eRuleBuilder.build();
         assertEquals(eRule, eRuleFromJson);
     }
-
 }

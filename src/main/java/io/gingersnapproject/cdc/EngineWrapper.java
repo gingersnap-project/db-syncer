@@ -91,7 +91,7 @@ public class EngineWrapper {
    }
 
    public void start() {
-      CacheBackend c = createCacheBackend(name, rule);
+      CacheBackend c = cacheService.backendForRule(name, rule);
       if (c != null) {
          EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
          this.engine = DebeziumEngine.create(Connect.class)
@@ -114,7 +114,7 @@ public class EngineWrapper {
                })
                .build();
          if (stopped)
-            CompletionStages.join(cacheService.reconnect(config.cache().uri()));
+            CompletionStages.join(cacheService.reconnect());
          executor.submit(engine);
          stopped = false;
       }
@@ -123,7 +123,7 @@ public class EngineWrapper {
    public void stop() throws IOException {
       engine.close();
       engine = null;
-      cacheService.stop(config.cache().uri());
+      cacheService.stop();
       stopped = true;
    }
 
@@ -131,19 +131,12 @@ public class EngineWrapper {
       eventing.connectorFailed(name, t);
    }
 
-   public void shutdownCacheService() {
-       cacheService.shutdown(config.cache().uri());
-   }
-
    public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect(config.cache().uri());
+      return cacheService.reconnect();
    }
 
    public String getName() {
       return name;
    }
 
-   private CacheBackend createCacheBackend(String name, Rule rule) {
-      return cacheService.backendForRule(name, rule);
-   }
 }

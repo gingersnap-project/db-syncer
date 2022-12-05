@@ -1,16 +1,14 @@
 package io.gingersnapproject.cdc.event;
 
-import java.net.URI;
-
 public class Events {
 
    private Events() { }
 
-   public record BackendFailedEvent(URI uri, Throwable throwable) { }
+   public record BackendFailedEvent(Throwable throwable) { }
 
-   public record BackendStartedEvent(URI uri) { }
+   public record BackendStartedEvent() { }
 
-   public record BackendStoppedEvent(URI uri) { }
+   public record BackendStoppedEvent() { }
 
    public record ConnectorFailedEvent(String name, Throwable throwable) { }
 

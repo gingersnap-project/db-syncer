@@ -1,23 +1,20 @@
 package io.gingersnapproject.cdc.remote;
 
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import io.gingersnapproject.cdc.OffsetBackend;
-import io.gingersnapproject.cdc.cache.CacheService;
-import io.gingersnapproject.cdc.event.NotificationManager;
-import io.gingersnapproject.util.ArcUtil;
-
-import io.quarkus.arc.Arc;
-import io.quarkus.arc.InstanceHandle;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.gingersnapproject.cdc.OffsetBackend;
+import io.gingersnapproject.cdc.cache.CacheService;
+import io.gingersnapproject.cdc.event.NotificationManager;
+import io.gingersnapproject.util.ArcUtil;
 
 public class RemoteOffsetStore implements OffsetBackingStore {
    public static final String URI_CACHE = "offset.storage.remote.uri";
@@ -62,18 +59,8 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    public void configure(WorkerConfig workerConfig) {
       log.info("Configuring offset store {}", workerConfig);
       topicName = (String) workerConfig.originals().get(TOPIC_NAME);
-      String stringURI = (String) workerConfig.originals().get(URI_CACHE);
-      URI uri = URI.create(stringURI);
-      for (InstanceHandle<CacheService> instanceHandle : Arc.container().listAll(CacheService.class)) {
-         CacheService cacheService = instanceHandle.get();
-         if (cacheService.supportsURI(uri)) {
-            offsetBackend = cacheService.offsetBackendForURI(uri);
-            break;
-         }
-      }
-      if (offsetBackend == null) {
-         throw new IllegalStateException("No offset cache storage for uri: " + uri);
-      }
+      CacheService cacheService = ArcUtil.instance(CacheService.class);
+      offsetBackend = cacheService.offsetBackend();
       eventing = ArcUtil.instance(NotificationManager.class);
    }
 }
