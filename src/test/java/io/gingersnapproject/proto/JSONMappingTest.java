@@ -13,7 +13,7 @@ import com.google.protobuf.util.JsonFormat;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
 import io.gingersnapproject.proto.api.config.v1alpha1.Key;
 import io.gingersnapproject.proto.api.config.v1alpha1.KeyFormat;
-import io.gingersnapproject.proto.api.config.v1alpha1.NamespacedRef;
+import io.gingersnapproject.proto.api.config.v1alpha1.NamespacedObjectReference;
 import io.gingersnapproject.proto.api.config.v1alpha1.Value;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -41,7 +41,7 @@ public class JSONMappingTest {
                 "}";
 
         EagerCacheRuleSpec.Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
-        NamespacedRef.Builder ns = NamespacedRef.newBuilder().setName("myCache").setNamespace("myNamespace");
+        NamespacedObjectReference.Builder ns = NamespacedObjectReference.newBuilder().setName("myCache").setNamespace("myNamespace");
         // Populating resources
         // Populating key
         List<String> keyColumns = Arrays.asList("col1", "col3", "col4");
