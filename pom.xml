@@ -229,7 +229,8 @@
           <includes>
             <include>config/**/*.proto</include>
           </includes>
-          <protocArtifact>com.google.protobuf:protoc:4.0.0-rc-2:exe:${os.detected.classifier}</protocArtifact>
+          <protocArtifact>com.google.protobuf:protoc:21.0-rc-1:exe:${os.detected.classifier}</protocArtifact>
+          <extraArgs>--experimental_allow_proto3_optional</extraArgs>
         </configuration>
       </plugin>
       <plugin>
