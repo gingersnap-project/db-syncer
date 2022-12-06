@@ -88,8 +88,10 @@ public class HotRodService implements CacheService {
       JsonTranslator<?> valueTranslator = rule.valueColumns().isPresent() ?
             new ColumnJsonTranslator(rule.valueColumns().get()) : IdentityTranslator.getInstance();
       JsonTranslator<?> keyTranslator = switch (rule.keyType()) {
-         case PLAIN -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
+         case TEXT -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
          case JSON -> new ColumnJsonTranslator(rule.keyColumns());
+         case UNRECOGNIZED -> throw new UnsupportedOperationException("Unimplemented case: " + rule.keyType());
+         default -> throw new IllegalArgumentException("Unexpected value: " + rule.keyType());
       };
 
       if (rcm == null)
