@@ -17,7 +17,7 @@ public interface Rule {
 
       List<String> keyColumns();
 
-      Optional<List<String>> columns();
+      Optional<List<String>> valueColumns();
 
       enum KeyType {
             PLAIN,
