@@ -15,12 +15,12 @@ public interface Rule {
       @WithDefault("|")
       String plainSeparator();
 
-      Optional<List<String>> keyColumns();
+      List<String> keyColumns();
 
       Optional<List<String>> columns();
 
       enum KeyType {
             PLAIN,
-            JSON;
+            JSON
       }
 }

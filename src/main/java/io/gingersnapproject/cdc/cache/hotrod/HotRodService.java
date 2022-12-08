@@ -88,13 +88,9 @@ public class HotRodService implements CacheService {
    public CacheBackend backendForRule(String name, Rule rule) {
       JsonTranslator<?> valueTranslator = rule.columns().isPresent() ?
             new ColumnJsonTranslator(rule.columns().get()) : IdentityTranslator.getInstance();
-      Optional<List<String>> optionalKeys = rule.keyColumns();
-      // TODO: hardcoded value here
-      List<String> columnsToUse = optionalKeys.orElse(List.of("id"));
       JsonTranslator<?> keyTranslator = switch (rule.keyType()) {
-         case PLAIN -> new ColumnStringTranslator(columnsToUse,
-                  rule.plainSeparator());
-         case JSON -> new ColumnJsonTranslator(columnsToUse);
+         case PLAIN -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
+         case JSON -> new ColumnJsonTranslator(rule.keyColumns());
       };
 
       if (rcm == null)
