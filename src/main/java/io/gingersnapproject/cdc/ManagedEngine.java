@@ -23,7 +23,7 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
-@Dependent
+@ApplicationScoped
 public class ManagedEngine implements DynamicRuleManagement {
    private static final Logger log = LoggerFactory.getLogger(ManagedEngine.class);
    private static final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(r ->

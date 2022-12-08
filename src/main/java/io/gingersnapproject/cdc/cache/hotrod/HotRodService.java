@@ -1,9 +1,8 @@
 package io.gingersnapproject.cdc.cache.hotrod;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
+import javax.annotation.PostConstruct;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -28,7 +27,6 @@ import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
 import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 import io.quarkus.runtime.ShutdownEvent;
-import io.quarkus.runtime.StartupEvent;
 
 @Singleton
 public class HotRodService implements CacheService {
@@ -39,7 +37,8 @@ public class HotRodService implements CacheService {
 
    volatile RemoteCacheManager rcm;
 
-   public void start(@Observes StartupEvent e) {
+   @PostConstruct
+   public void init() {
       rcm = new RemoteCacheManager(config.cache().uri());
       createCaches();
       eventing.backendStartedEvent();
