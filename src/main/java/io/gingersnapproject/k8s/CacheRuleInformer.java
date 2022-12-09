@@ -45,8 +45,6 @@ public class CacheRuleInformer {
    KubernetesConfiguration configuration;
    @Inject
    DynamicRuleManagement drm;
-   @Inject
-   Configuration config;
    private SharedIndexInformer<ConfigMap> informer;
 
    void startWatching(@Observes StartupEvent ignore) {
@@ -57,7 +55,7 @@ public class CacheRuleInformer {
 
       String ruleName = configuration.configMapName().get();
       log.info("Informer on rules in {}", ruleName);
-      final long RESYNC_PERIOD = 60 * 1000L;
+      var RESYNC_PERIOD = 60 * 1000L;
       KubernetesClient kc = client.get();
       informer = kc.configMaps().withName(ruleName).inform(new ConfigMapEventHandler(drm), RESYNC_PERIOD);
       informer.start();
@@ -71,7 +69,7 @@ public class CacheRuleInformer {
    }
 
    private static final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
-      private DynamicRuleManagement drm;
+      final DynamicRuleManagement drm;
       private interface SendEventFunc {
          void sendEvent(String name, EagerCacheRuleSpec rule);
       }
@@ -87,7 +85,6 @@ public class CacheRuleInformer {
                JsonFormat.parser().ignoringUnknownFields().merge(entry.getValue(), eRuleBuilder);
             } catch (InvalidProtocolBufferException e) {
                log.error("Cannot parse eager rule with name {}", entry.getKey(), e);
-               log.debug("{}", e);
             }
             f.sendEvent(entry.getKey(), eRuleBuilder.build());
          }
@@ -104,24 +101,23 @@ public class CacheRuleInformer {
       public void onUpdate(ConfigMap oldObj, ConfigMap newObj) {
          Map<String, String> oldMap = oldObj.getData();
          Map<String, String> newMap = newObj.getData();
-         Set<Map.Entry<String, String>> olds = oldMap.entrySet();
-         Set<Map.Entry<String, String>> news = newMap.entrySet();
-         Set<Map.Entry<String, String>> added, removed, changed;
-         added = new HashSet<Map.Entry<String, String>>(news);
+         var olds = oldMap.entrySet();
+         var  news = newMap.entrySet();
+         var added = new HashSet<Map.Entry<String, String>>(news);
          // Get added keys. From new set remove
          // - keys already present in old set
          added.removeIf(arg0 -> {
             return oldMap.containsKey(arg0.getKey());
          });
 
-         removed = new HashSet<Map.Entry<String, String>>(olds);
+         var removed = new HashSet<Map.Entry<String, String>>(olds);
          // Get removed keys. From old set remove
          // - keys still present in new set
          removed.removeIf((arg0 -> {
             return newMap.containsKey(arg0.getKey());
          }));
 
-         changed = new HashSet<Map.Entry<String, String>>(olds);
+         var changed = new HashSet<Map.Entry<String, String>>(olds);
          // Get the changed keys. From the old set remove
          // - keys which aren't in the new set (deleted)
          // - keys which are in the new set with same value (unchanged)
@@ -131,16 +127,16 @@ public class CacheRuleInformer {
             processConfigMapAndSend(changed, (name, rule) -> {
                log.info("calling DynamicRuleManagement.updateRule({},{}", name, rule.toString());
                throw new UnsupportedOperationException("Rules cannot be updated: "+changed.toString());
-            // this.drm.updateRule(name,new EagerCacheRuleSpecAdapter(rule));
+            // drm.updateRule(name,new EagerCacheRuleSpecAdapter(rule));
          });
       }
          processConfigMapAndSend(removed, (name, rule) -> {
             log.info("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
-            this.drm.removeRule(name);
+            drm.removeRule(name);
          });
          processConfigMapAndSend(added, (name, rule) -> {
             log.info("calling DynamicRuleManagement.addRule({},{}", name, rule.toString());
-            this.drm.addRule(name,new EagerCacheRuleSpecAdapter(rule));
+            drm.addRule(name,new EagerCacheRuleSpecAdapter(rule));
          });
       }
 
@@ -148,7 +144,7 @@ public class CacheRuleInformer {
       public void onDelete(ConfigMap obj, boolean deletedFinalStateUnknown) {
          processConfigMapAndSend(obj.getData().entrySet(), (name, rule) -> {
             log.info("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
-            this.drm.removeRule(name);
+            drm.removeRule(name);
          });
       }
    }
@@ -174,7 +170,7 @@ class EagerCacheRuleSpecAdapter implements Rule {
       }
    }
 
-   private EagerCacheRuleSpec eagerRule;
+   final EagerCacheRuleSpec eagerRule;
 
    public EagerCacheRuleSpecAdapter(EagerCacheRuleSpec eagerRule) {
       this.eagerRule = eagerRule;
@@ -218,7 +214,7 @@ class EagerCacheRuleSpecAdapter implements Rule {
 
    @Override
    public Optional<List<String>> columns() {
-      return Optional.ofNullable(eagerRule.getValue().getValueColumnsList());
+      return Optional.of(eagerRule.getValue().getValueColumnsList());
    }
 
 }
