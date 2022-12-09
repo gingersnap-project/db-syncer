@@ -30,3 +30,5 @@ jobs:
         with:
           name: jdk17-test-results
           path: "**/target/*-reports*/**/TEST-*.xml"
+  e2e:
+    uses: ryanemerson/gingersnap-test/.github/workflows/e2e.yaml@test_dev

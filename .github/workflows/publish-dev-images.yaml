@@ -6,23 +6,16 @@ on:
       - 'main'
 
 jobs:
+  image:
+    uses: ./.github/workflows/build-image.yaml
+
   upload:
+    needs: image
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Build
-        run: mvn package -DskipTests
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Download artifact
+        uses: actions/download-artifact@v3
 
       - name: Login to Quay
         uses: docker/login-action@v2
@@ -31,10 +24,8 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_TOKEN }}
 
-      - name: Build Image and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: src/main/docker/Dockerfile.jvm
-          push: true
-          tags: quay.io/gingersnap/db-syncer:latest
+      - name: Load and Push image
+        # Use same tag value as passed to image job
+        run: |
+          docker load --input ${{ needs.image.outputs.image-name }}
+          docker push quay.io/gingersnap/db-syncer:latest
