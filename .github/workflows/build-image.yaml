@@ -1,0 +1,65 @@
+name: Build db-syncer Image
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ${{ github.ref }}
+      repository:
+        type: string
+        default: ${{ github.repository }}
+      tag:
+        type: string
+        default: latest
+    outputs:
+      image-name:
+        description: The name of the created image file
+        value: ${{ jobs.db-syncer-image.outputs.name }}
+      image-tag:
+        description: The tag of the created image file
+        value: ${{ jobs.db-syncer-image.outputs.tag }}
+
+jobs:
+  db-syncer-image:
+    runs-on: ubuntu-latest
+
+    outputs:
+      name: ${{ steps.meta.outputs.name }}
+      tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build
+        run: mvn package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - id: meta
+        run: |
+          echo "name=db-syncer" >> $GITHUB_OUTPUT
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+
+      - name: Build Image and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: src/main/docker/Dockerfile.jvm
+          tags: quay.io/gingersnap/db-syncer:${{ inputs.tag }}
+          outputs: type=docker,dest=/tmp/db-syncer.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: db-syncer
+          path: /tmp/db-syncer.tar
