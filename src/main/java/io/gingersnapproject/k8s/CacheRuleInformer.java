@@ -7,13 +7,12 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.Optional;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import io.gingersnapproject.cdc.DynamicRuleManagement;
-import io.gingersnapproject.cdc.configuration.Configuration;
 import io.gingersnapproject.cdc.configuration.Connector;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.k8s.configuration.KubernetesConfiguration;
@@ -34,7 +33,7 @@ import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
-@Singleton
+@ApplicationScoped
 public class CacheRuleInformer {
 
    private static final Logger log = LoggerFactory.getLogger(CacheRuleInformer.class);

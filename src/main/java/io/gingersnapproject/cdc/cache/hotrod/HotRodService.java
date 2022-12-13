@@ -4,8 +4,8 @@ import java.util.concurrent.CompletionStage;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.event.Observes;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -28,7 +28,7 @@ import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 import io.quarkus.runtime.ShutdownEvent;
 
-@Singleton
+@ApplicationScoped
 public class HotRodService implements CacheService {
 
    @Inject NotificationManager eventing;
