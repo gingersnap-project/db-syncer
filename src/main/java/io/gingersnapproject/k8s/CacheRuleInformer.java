@@ -207,12 +207,12 @@ class EagerCacheRuleSpecAdapter implements Rule {
    }
 
    @Override
-   public Optional<List<String>> keyColumns() {
-      return Optional.ofNullable(eagerRule.getKey().getKeyColumnsList());
+   public List<String> keyColumns() {
+      return eagerRule.getKey().getKeyColumnsList();
    }
 
    @Override
-   public Optional<List<String>> columns() {
+   public Optional<List<String>>  valueColumns() {
       return Optional.of(eagerRule.getValue().getValueColumnsList());
    }
 
