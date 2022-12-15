@@ -4,8 +4,8 @@ import java.util.concurrent.CompletionStage;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.event.Observes;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -28,7 +28,7 @@ import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 import io.quarkus.runtime.ShutdownEvent;
 
-@Singleton
+@ApplicationScoped
 public class HotRodService implements CacheService {
 
    @Inject NotificationManager eventing;
@@ -88,8 +88,10 @@ public class HotRodService implements CacheService {
       JsonTranslator<?> valueTranslator = rule.valueColumns().isPresent() ?
             new ColumnJsonTranslator(rule.valueColumns().get()) : IdentityTranslator.getInstance();
       JsonTranslator<?> keyTranslator = switch (rule.keyType()) {
-         case PLAIN -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
+         case TEXT -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
          case JSON -> new ColumnJsonTranslator(rule.keyColumns());
+         case UNRECOGNIZED -> throw new UnsupportedOperationException("Unimplemented case: " + rule.keyType());
+         default -> throw new IllegalArgumentException("Unexpected value: " + rule.keyType());
       };
 
       if (rcm == null)

@@ -1,8 +1,8 @@
 package io.gingersnapproject.k8s;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
-import javax.inject.Singleton;
 
 import io.gingersnapproject.k8s.configuration.KubernetesConfiguration;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.quarkus.arc.lookup.LookupUnlessProperty;
 
-@Singleton
+@ApplicationScoped
 public class KubernetesClientProducer {
 
    private static final Logger log = LoggerFactory.getLogger(KubernetesClientProducer.class);
