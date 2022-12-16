@@ -40,7 +40,7 @@ public class ConfigMapEventHandlerTest {
     @Test
     public void addRulesTest() {
         var cm = new ConfigMap();
-        cm.setData(Map.of("rule1", "value1", "rule2", "value2"));
+        cm.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule2", JSONMappingTest.eRuleTestCase2JSON));
         cmeh.onAdd(cm);
         verify(drmMock, times(1)).addRule(eq("rule1"), any(Rule.class));
         verify(drmMock, times(1)).addRule(eq("rule2"), any(Rule.class));
@@ -49,7 +49,7 @@ public class ConfigMapEventHandlerTest {
     @Test
     public void deleteRulesTest() {
         var cm = new ConfigMap();
-        cm.setData(Map.of("rule1", "value1", "rule2", "value2"));
+        cm.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule2", JSONMappingTest.eRuleTestCase2JSON));
         cmeh.onDelete(cm, true);
         verify(drmMock, times(1)).removeRule(eq("rule1"));
         verify(drmMock, times(1)).removeRule(eq("rule2"));
@@ -58,9 +58,9 @@ public class ConfigMapEventHandlerTest {
     @Test
     public void updateRulesTest() {
         var cmOld = new ConfigMap();
-        cmOld.setData(Map.of("rule1", "value1", "rule2", "value2"));
+        cmOld.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule2", JSONMappingTest.eRuleTestCase2JSON));
         var cmNew = new ConfigMap();
-        cmNew.setData(Map.of("rule1", "value1", "rule3", "value3"));
+        cmNew.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule3", JSONMappingTest.eRuleTestCase2JSON));
         cmeh.onUpdate(cmOld, cmNew);
         verify(drmMock, times(1)).addRule(eq("rule3"), any(Rule.class));
         verify(drmMock, times(1)).removeRule(eq("rule2"));
@@ -70,7 +70,7 @@ public class ConfigMapEventHandlerTest {
     public void emptyOldCmTest() {
         var cmOld = new ConfigMap();
         var cmNew = new ConfigMap();
-        cmNew.setData(Map.of("rule1", "value1", "rule3", "value3"));
+        cmNew.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule3", JSONMappingTest.eRuleTestCase2JSON));
         cmeh.onUpdate(cmOld, cmNew);
         verify(drmMock, times(1)).addRule(eq("rule3"), any(Rule.class));
         verify(drmMock, times(1)).addRule(eq("rule1"), any(Rule.class));
@@ -79,7 +79,7 @@ public class ConfigMapEventHandlerTest {
     @Test
     public void emptyNewCmTest() {
         var cmOld = new ConfigMap();
-        cmOld.setData(Map.of("rule1", "value1", "rule3", "value3"));
+        cmOld.setData(Map.of("rule1", JSONMappingTest.eRuleTestCaseJSON, "rule3", JSONMappingTest.eRuleTestCase2JSON));
         var cmNew = new ConfigMap();
         cmeh.onUpdate(cmOld, cmNew);
         verify(drmMock, times(1)).removeRule(eq("rule3"));
