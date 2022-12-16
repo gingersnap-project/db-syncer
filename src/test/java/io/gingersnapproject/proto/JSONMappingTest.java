@@ -17,26 +17,41 @@ import io.gingersnapproject.proto.api.config.v1alpha1.NamespacedObjectReference;
 import io.gingersnapproject.proto.api.config.v1alpha1.Value;
 
 public class JSONMappingTest {
-    private static String eRuleTestCaseJSON;
+    public static String eRuleTestCaseJSON= "{\n" +
+    "  \"cacheRef\": {\n" +
+    "    \"name\": \"myCache\",\n" +
+    "    \"namespace\": \"myNamespace\"\n" +
+    "  },\n" +
+    "  \"tableName\": \"TABLE_EAGER_RULE_1\",\n" +
+    "  \"key\": {\n" +
+    "    \"format\": \"JSON\",\n" +
+    "    \"keySeparator\": \",\",\n" +
+    "    \"keyColumns\": [\"col1\", \"col3\", \"col4\"]\n" +
+    "  },\n" +
+    "  \"value\": {\n" +
+    "    \"valueColumns\": [\"col6\", \"col7\", \"col8\"]\n" +
+    "  }\n" +
+    "}";
+
+    public static String eRuleTestCase2JSON= "{\n" +
+    "  \"cacheRef\": {\n" +
+    "    \"name\": \"myCache\",\n" +
+    "    \"namespace\": \"myNamespace\"\n" +
+    "  },\n" +
+    "  \"tableName\": \"TABLE_EAGER_RULE_2\",\n" +
+    "  \"key\": {\n" +
+    "    \"format\": \"JSON\",\n" +
+    "    \"keySeparator\": \",\",\n" +
+    "    \"keyColumns\": [\"colA\", \"colB\", \"colC\"]\n" +
+    "  },\n" +
+    "  \"value\": {\n" +
+    "    \"valueColumns\": [\"col6\", \"col7\", \"col8\"]\n" +
+    "  }\n" +
+    "}";
     private static EagerCacheRuleSpec eRule;
 
     @BeforeAll
     public static void init() {
-        eRuleTestCaseJSON = "{\n" +
-                "  \"cacheRef\": {\n" +
-                "    \"name\": \"myCache\",\n" +
-                "    \"namespace\": \"myNamespace\"\n" +
-                "  },\n" +
-                "  \"tableName\": \"TABLE_EAGER_RULE_1\",\n" +
-                "  \"key\": {\n" +
-                "    \"format\": \"JSON\",\n" +
-                "    \"keySeparator\": \",\",\n" +
-                "    \"keyColumns\": [\"col1\", \"col3\", \"col4\"]\n" +
-                "  },\n" +
-                "  \"value\": {\n" +
-                "    \"valueColumns\": [\"col6\", \"col7\", \"col8\"]\n" +
-                "  }\n" +
-                "}";
 
         EagerCacheRuleSpec.Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
         NamespacedObjectReference.Builder ns = NamespacedObjectReference.newBuilder().setName("myCache").setNamespace("myNamespace");
