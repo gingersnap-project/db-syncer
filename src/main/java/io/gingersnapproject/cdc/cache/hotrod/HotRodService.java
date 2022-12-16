@@ -1,20 +1,5 @@
 package io.gingersnapproject.cdc.cache.hotrod;
 
-import java.util.concurrent.CompletionStage;
-
-import javax.annotation.PostConstruct;
-import javax.enterprise.event.Observes;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-import org.infinispan.client.hotrod.RemoteCache;
-import org.infinispan.client.hotrod.RemoteCacheManager;
-import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
-import org.infinispan.client.hotrod.multimap.RemoteMultimapCacheManagerFactory;
-import org.infinispan.commons.api.CacheContainerAdmin;
-import org.infinispan.commons.configuration.StringConfiguration;
-import org.infinispan.commons.dataconversion.MediaType;
-
 import io.gingersnapproject.cdc.CacheBackend;
 import io.gingersnapproject.cdc.OffsetBackend;
 import io.gingersnapproject.cdc.SchemaBackend;
@@ -26,7 +11,21 @@ import io.gingersnapproject.cdc.translation.ColumnJsonTranslator;
 import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
 import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
+import io.gingersnapproject.metrics.DBSyncerMetrics;
 import io.quarkus.runtime.ShutdownEvent;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.multimap.MultimapCacheManager;
+import org.infinispan.client.hotrod.multimap.RemoteMultimapCacheManagerFactory;
+import org.infinispan.commons.api.CacheContainerAdmin;
+import org.infinispan.commons.configuration.StringConfiguration;
+import org.infinispan.commons.dataconversion.MediaType;
+
+import javax.annotation.PostConstruct;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import java.util.concurrent.CompletionStage;
 
 @ApplicationScoped
 public class HotRodService implements CacheService {
@@ -35,13 +34,15 @@ public class HotRodService implements CacheService {
 
    @Inject Configuration config;
 
+   @Inject DBSyncerMetrics metrics;
+
    volatile RemoteCacheManager rcm;
 
    @PostConstruct
    public void init() {
       rcm = new RemoteCacheManager(config.cache().uri());
       createCaches();
-      eventing.backendStartedEvent();
+      eventing.backendStartedEvent(false);
    }
 
    public void shutdown(@Observes ShutdownEvent e) {
@@ -69,7 +70,7 @@ public class HotRodService implements CacheService {
          boolean successful = t == null;
          if (successful) {
             createCaches();
-            eventing.backendStartedEvent();
+            eventing.backendStartedEvent(true);
          }
          return successful;
       });
@@ -97,7 +98,7 @@ public class HotRodService implements CacheService {
       if (rcm == null)
          throw new IllegalStateException("RemoteCacheManager not initialized");
 
-      return new HotRodCacheBackend(rcm.getCache(name), keyTranslator, valueTranslator, eventing);
+      return new HotRodCacheBackend(rcm.getCache(name), keyTranslator, valueTranslator, eventing, metrics);
    }
 
    private void getOrCreateCacheBackendCache(String name, RemoteCacheManager rcm) {
