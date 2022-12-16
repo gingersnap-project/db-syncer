@@ -7,10 +7,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -21,8 +21,6 @@ import io.gingersnapproject.cdc.DynamicRuleManagement;
 import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.proto.JSONMappingTest;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
-import io.gingersnapproject.proto.api.config.v1alpha1.Key;
-import io.gingersnapproject.proto.api.config.v1alpha1.KeyFormat;
 
 public class ConfigMapEventHandlerTest {
 
@@ -31,25 +29,14 @@ public class ConfigMapEventHandlerTest {
 
     @BeforeAll
     public static void setup() {
-        // DynamicRuleManagement drm = new DynamicRuleManagement() {
-
-        // @Override
-        // public void addRule(String name, Rule rule) {
-        // // TODO Auto-generated method stub
-
-        // }
-
-        // @Override
-        // public void removeRule(String name) {
-        // // TODO Auto-generated method stub
-
-        // }
-
-        // };
         drmMock = Mockito.mock(DynamicRuleManagement.class);
         cmeh = new ConfigMapEventHandler(drmMock);
     }
 
+    @BeforeEach
+    public void reset() {
+        Mockito.reset(drmMock);
+    }
     @Test
     public void addRulesTest() {
         var cm = new ConfigMap();
@@ -134,7 +121,7 @@ public class ConfigMapEventHandlerTest {
         cm2.setData(Map.of("eagerRule", JSONMappingTest.eRuleTestCase2JSON));
         Exception ex = assertThrows(UnsupportedOperationException.class, () ->  cmeh.onUpdate(cm,cm2));
         assertTrue(ex.getMessage().contains(JSONMappingTest.eRuleTestCase2JSON));
-        assertTrue(ex.getMessage().contains(JSONMappingTest.eRuleTestCaseJSON));
+        assertTrue(ex.getMessage().contains(JSONMappingTest.eRuleTestCase2JSON));
     }
 
 }
