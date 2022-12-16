@@ -1,5 +1,7 @@
 package io.gingersnapproject.cdc.event;
 
+import io.gingersnapproject.cdc.connector.DatabaseProvider;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
@@ -29,16 +31,16 @@ public class NotificationManager {
       connectorFailedEvent.fire(new Events.ConnectorFailedEvent(name, t));
    }
 
-   public void connectorStarted(String name) {
-      connectorStartedEvent.fire(new Events.ConnectorStartedEvent(name));
+   public void connectorStarted(String name, DatabaseProvider provider) {
+      connectorStartedEvent.fire(new Events.ConnectorStartedEvent(name, provider));
    }
 
    public void connectorStopped(String name) {
       connectorStoppedEvent.fire(new Events.ConnectorStoppedEvent(name));
    }
 
-   public void backendStartedEvent() {
-      backendStartedEvent.fire(new Events.BackendStartedEvent());
+   public void backendStartedEvent(boolean reconnect) {
+      backendStartedEvent.fire(new Events.BackendStartedEvent(reconnect));
    }
 
    public void backendFailedEvent(Throwable throwable) {

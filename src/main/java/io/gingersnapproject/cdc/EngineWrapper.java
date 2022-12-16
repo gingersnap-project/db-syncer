@@ -101,7 +101,7 @@ public class EngineWrapper {
                .using(new DebeziumEngine.ConnectorCallback() {
                   @Override
                   public void taskStarted() {
-                     eventing.connectorStarted(name);
+                     eventing.connectorStarted(name, config.database().type());
                   }
 
                   @Override
