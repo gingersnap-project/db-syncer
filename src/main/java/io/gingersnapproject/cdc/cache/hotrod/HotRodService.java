@@ -57,8 +57,8 @@ public class HotRodService implements CacheService {
       }
    }
 
-   private static final String OFFSET_CACHE_NAME = "debezium-offset";
-   private static final String SCHEMA_CACHE_NAME = "debezium-schema";
+   private static final String OFFSET_CACHE_NAME = "___debezium-offset";
+   private static final String SCHEMA_CACHE_NAME = "___debezium-schema";
 
    @Override
    public CompletionStage<Boolean> reconnect() {
