@@ -1,0 +1,34 @@
+name: db-syncer -Create Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The branch to checkout when creating the image."
+        required: true
+        default: "release_pipeline"
+      
+env:
+  GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}   
+  release-version: 0.0.0
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure Git
+        run: |
+          git config --global user.name "infinispan-qe-bot"
+          git config --global user.email "q*@infinispan.org"
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with: 
+          ref: ${{ github.event.inputs.ref }}
+          token: ${{ secrets.MY_TOKEN }}   
+          
+      - name: Tag the release
+        run: |
+         git tag -a v${{ env.release-version}} -m "Release db-syncer:: ${{ env.release-version}}"
+         git push origin --tags
