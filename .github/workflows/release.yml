@@ -13,22 +13,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure Git
-        run: |
-          git config --global user.name "infinispan-qe-bot"
-          git config --global user.email "q*@infinispan.org"
-
       - name: Checkout
         uses: actions/checkout@v2
-        with: 
-          token: ${{ secrets.MY_TOKEN }}  
-          fetch-depth: 0
 
-      - name: Checkout latest tag
+      - name: Get latest tag
         id: vars
         run: | 
           LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-          git checkout $LATEST_TAG
           echo LATEST_TAG=$LATEST_TAG >> $GITHUB_OUTPUT
 
       - name: Setup Java

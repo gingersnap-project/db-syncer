@@ -10,7 +10,7 @@ on:
       
 env:
   GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}   
-  release-version: 0.0.0
+  release-version: ${{ github.event.inputs.ref }}
 
 jobs:
   tag:
