@@ -5,11 +5,13 @@ import io.gingersnapproject.metrics.micrometer.MySQLMetrics;
 import io.gingersnapproject.metrics.micrometer.StreamingMetrics;
 import io.gingersnapproject.metrics.micrometer.TagUtil;
 import io.gingersnapproject.metrics.micrometer.TimerMetrics;
+import io.gingersnapproject.testcontainers.annotation.KeyValue;
+import io.gingersnapproject.testcontainers.annotation.WithMySQL;
+
 import io.gingersnapproject.testcontainers.MySQLResources;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.config.NamingConvention;
 import io.micrometer.prometheus.PrometheusNamingConvention;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static io.gingersnapproject.testcontainers.BaseGingersnapResourceLifecycleManager.REMOVE_DEFAULT_RULE;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.CACHE_SERVICE;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.DEBEZIUM_CONNECTOR;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.RULE_KEY;
@@ -24,10 +27,18 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
 
 @QuarkusTest
-@QuarkusTestResource(MySQLResources.class)
+@WithMySQL(properties = {
+      @KeyValue(key = REMOVE_DEFAULT_RULE),
+      @KeyValue(key = "gingersnap.rule.sa-east.connector.schema", value = "debezium"),
+      @KeyValue(key = "gingersnap.rule.sa-east.connector.table", value = "customer"),
+      @KeyValue(key = "gingersnap.rule.sa-east.key-columns", value = "id")
+})
 public class MetricsResourceTest {
-
+   private static final String RULE = "sa-east";
    private static final NamingConvention NAMING_CONVENTION = new PrometheusNamingConvention();
+   private static final String DEBEZIUM_METRICS = "%s{gingersnap=\"debezium_connector\",}";
+   private static final String COUNTER_CACHE_SERVICE_METRICS = "%s_total{gingersnap=\"cache_service\",}";
+   private static final String TIMER_CACHE_SERVICE_METRICS = "%s_seconds_count{gingersnap=\"cache_service\",}";
 
    @Test
    public void testMetricsEndpoint() {

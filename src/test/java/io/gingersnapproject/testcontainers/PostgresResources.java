@@ -3,12 +3,14 @@ package io.gingersnapproject.testcontainers;
 import java.time.Duration;
 import java.util.Map;
 
+import io.gingersnapproject.testcontainers.annotation.WithPostgres;
+
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
-public class PostgresResources extends BaseGingersnapResourceLifecycleManager {
+public class PostgresResources extends BaseGingersnapResourceLifecycleManager<WithPostgres> {
    private static final String IMAGE = "postgres:latest";
 
    @Override
@@ -29,5 +31,10 @@ public class PostgresResources extends BaseGingersnapResourceLifecycleManager {
             .withCopyFileToContainer(MountableFile.forClasspathResource("postgres/setup.sql"), "/docker-entrypoint-initdb.d/setup.sql")
             .withCommand("postgres", "-c", "wal_level=logical");
       return container;
+   }
+
+   @Override
+   protected Map<String, String> convert(WithPostgres annotation) {
+      return convert(annotation.properties());
    }
 }
