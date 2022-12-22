@@ -20,6 +20,8 @@
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <org.gingersnap.api.basedir>${project.basedir}/gingersnap-api</org.gingersnap.api.basedir>
+    <skipGingersnapAdditionalTests>true</skipGingersnapAdditionalTests>
+    <functionalTestOnly>false</functionalTestOnly>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -197,6 +199,74 @@
             <maven.home>${maven.home}</maven.home>
           </systemPropertyVariables>
         </configuration>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <configuration>
+              <systemPropertyVariables>
+                <quarkus.test.profile>test</quarkus.test.profile>
+                <functionalTestOnly>true</functionalTestOnly>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+
+          <!-- Running tests with different DB providers -->
+          <execution>
+            <id>mysql</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <skip>${functionalTestOnly}</skip>
+              <reportNameSuffix>mysql</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>mysql</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <id>postgres</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!--<skip>${skipGingersnapAdditionalTests}</skip>-->
+              <skip>true</skip>
+              <reportNameSuffix>postgres</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>postgres</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+
+          <!-- Executions for running with another HR server -->
+          <execution>
+            <id>infinispan-mysql</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <skip>${skipGingersnapAdditionalTests}</skip>
+              <reportNameSuffix>infinispan-mysql</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>infinispan,mysql</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <id>infinispan-postgres</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <skip>${skipGingersnapAdditionalTests}</skip>
+              <reportNameSuffix>infinispan-postgres</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>infinispan,postgres</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
