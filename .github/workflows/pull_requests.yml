@@ -22,7 +22,7 @@ jobs:
           cache: maven
 
       - name: JDK 17 Tests
-        run: mvn -B verify -Dmaven.test.failure.ignore=true -Dansi.strip=true
+        run: mvn -B verify -Dmaven.test.failure.ignore=true -Dansi.strip=true -DskipGingersnapAdditionalTests=false
 
       - name: Test Logs
         uses: actions/upload-artifact@v3

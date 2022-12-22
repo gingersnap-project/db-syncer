@@ -1,5 +1,4 @@
 create schema debezium;
-
 create table debezium.customer (id int primary key, fullname varchar(255), email varchar(255));
 create table debezium.car_model (id int primary key, model varchar(255), brand varchar(255));
 

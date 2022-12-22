@@ -1,43 +1,93 @@
 package io.gingersnapproject.testcontainers;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+import io.gingersnapproject.testcontainers.annotation.WithDatabase;
+import io.gingersnapproject.testcontainers.annotation.KeyValue;
+import io.gingersnapproject.testcontainers.hotrod.CacheManagerContainer;
+import io.gingersnapproject.testcontainers.hotrod.HotRodContainer;
+import io.gingersnapproject.testcontainers.hotrod.InfinispanContainer;
+
+import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.output.OutputFrame;
 
-public abstract class BaseGingersnapResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
+public class BaseGingersnapResourceLifecycleManager implements
+      QuarkusTestResourceConfigurableLifecycleManager<WithDatabase> {
 
-   public static final String RULE_NAME = "us-east";
-   private CacheManagerContainer cacheManager;
-
+   private static final Logger log = LoggerFactory.getLogger(BaseGingersnapResourceLifecycleManager.class);
+   private static final Pattern RULE_NAME_PATTERN = Pattern.compile("^[a-z\\d]+$");
+   private HotRodContainer<?> cacheManager;
    private JdbcDatabaseContainer<?> database;
+   private final Map<String, String> runtimeProperties = new HashMap<>();
+   private DatabaseProvider delegate;
+   private String[] rules;
+
+   @Override
+   public final void init(WithDatabase annotation) {
+      var clazz = annotation.value();
+
+      try {
+         if (clazz.isInterface()) clazz = Profiles.databaseProviderClass();
+         this.delegate = clazz.getConstructor().newInstance();
+         rules = annotation.rules();
+         for (String rule : rules) assertCompatibleRuleName(rule);
+         runtimeProperties.putAll(convert(annotation.properties()));
+      } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+         throw new RuntimeException(String.format("Failed instantiating: %s", clazz.getSimpleName()));
+      }
+   }
 
    @Override
    public Map<String, String> start() {
-      database = createDatabase();
+      try {
+         return internalStart();
+      } catch (Throwable t) {
+         if (cacheManager != null) {
+            log.error("Failed container output: \n{}", cacheManager.getLogs(OutputFrame.OutputType.STDOUT), t);
+         } else {
+            log.error("Cache manager was not initialized!", t);
+         }
+         throw t;
+      }
+   }
+
+   private Map<String, String> internalStart() {
+      database = delegate.createDatabase();
 
       assert database != null : "Database can not be null";
 
       if (!database.isRunning()) database.start();
 
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
-      cacheManager = new CacheManagerContainer()
-            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind(database.getJdbcUrl()), database.getFirstMappedPort(), database.getDatabaseName()));
+      String databaseKind = databaseKind(database.getJdbcUrl());
+      cacheManager = createHotRodContainer(databaseKind);
       cacheManager.start();
 
       Map<String, String> properties = new HashMap<>(Map.of(
-            "gingersnap.cache.uri", cacheManager.hotrodUri(),
+            "gingersnap.cache.uri", cacheManager.hotRodURI(),
             "gingersnap.database.host", database.getHost(),
             "gingersnap.database.port", Integer.toString(database.getFirstMappedPort()),
             "gingersnap.database.user", database.getUsername(),
-            "gingersnap.database.password", database.getPassword(),
-            "gingersnap.rule.%s.connector.schema".formatted(RULE_NAME), "debezium",
-            "gingersnap.rule.%s.connector.table".formatted(RULE_NAME), "customer",
-            "gingersnap.rule.%s.key-columns".formatted(RULE_NAME), "fullname"
+            "gingersnap.database.password", database.getPassword()
       ));
-      enrichProperties(properties);
+
+      for (String rule : rules) {
+         properties.putAll(Map.of(
+               "gingersnap.rule.%s.connector.schema".formatted(rule), "debezium",
+               "gingersnap.rule.%s.connector.table".formatted(rule), "customer",
+               "gingersnap.rule.%s.key-columns".formatted(rule), "fullname"
+         ));
+      }
+
+      properties.putAll(delegate.properties());
+      properties.putAll(runtimeProperties);
       return properties;
    }
 
@@ -47,15 +97,34 @@ public abstract class BaseGingersnapResourceLifecycleManager implements QuarkusT
       if (database != null) database.stop();
    }
 
-   protected void enrichProperties(Map<String, String> properties) {
-      // No-op
+   private Map<String, String> convert(KeyValue[] values) {
+      Map<String, String> properties = new HashMap<>();
+      for (KeyValue kv : values) {
+         properties.put(kv.key(), kv.value());
+      }
+      return properties;
    }
-
-   protected abstract JdbcDatabaseContainer<?> createDatabase();
 
    public static String databaseKind(String url) {
       String replace = url.replace("jdbc:", "");
       String[] values = replace.split(":");
       return values[0];
+   }
+
+   private static void assertCompatibleRuleName(String name) {
+      assert RULE_NAME_PATTERN.matcher(name).matches() : String.format("Rule '%s' is not a valid name", name);
+   }
+
+   private HotRodContainer<?> createHotRodContainer(String dbKind) {
+      var clazz = Profiles.hotRodContainerClass();
+      if (clazz.equals(InfinispanContainer.class)) {
+         return new InfinispanContainer();
+      }
+
+      return new CacheManagerContainer(dbKind)
+            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", dbKind, database.getFirstMappedPort(), database.getDatabaseName()))
+            .withDatabaseUser(database.getUsername())
+            .withDatabasePassword(database.getPassword())
+            .withRules(rules);
    }
 }

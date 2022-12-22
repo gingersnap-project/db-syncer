@@ -2,14 +2,13 @@ package io.gingersnapproject.rest;
 
 import static io.restassured.RestAssured.given;
 
-import io.gingersnapproject.testcontainers.MySQLResources;
+import io.gingersnapproject.testcontainers.annotation.WithDatabase;
 
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@QuarkusTestResource(MySQLResources.class)
+@WithDatabase(rules = "rule1")
 public class HealthCheckerTest {
    @Test
    public void testHealthEndpointDefined() {

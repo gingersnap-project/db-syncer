@@ -5,11 +5,12 @@ import io.gingersnapproject.metrics.micrometer.MySQLMetrics;
 import io.gingersnapproject.metrics.micrometer.StreamingMetrics;
 import io.gingersnapproject.metrics.micrometer.TagUtil;
 import io.gingersnapproject.metrics.micrometer.TimerMetrics;
-import io.gingersnapproject.testcontainers.MySQLResources;
+import io.gingersnapproject.testcontainers.database.MySQL;
+import io.gingersnapproject.testcontainers.annotation.WithDatabase;
+
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.config.NamingConvention;
 import io.micrometer.prometheus.PrometheusNamingConvention;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.Test;
@@ -24,9 +25,9 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
 
 @QuarkusTest
-@QuarkusTestResource(MySQLResources.class)
+@WithDatabase(value = MySQL.class, rules = MetricsResourceTest.RULE)
 public class MetricsResourceTest {
-
+   static final String RULE = "metricstest";
    private static final NamingConvention NAMING_CONVENTION = new PrometheusNamingConvention();
 
    @Test
@@ -69,7 +70,7 @@ public class MetricsResourceTest {
       if (hasRule) {
          name += "%s=\"%s\",".formatted(
                NAMING_CONVENTION.tagKey(RULE_KEY),
-               NAMING_CONVENTION.tagValue(MySQLResources.RULE_NAME)
+               NAMING_CONVENTION.tagValue(RULE)
          );
       }
       name += "}";
