@@ -80,6 +80,9 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
       if (object instanceof Struct)
          return Serialization.convert((Struct) object);
 
+      // Happens only during tests.
+      if (object instanceof Json) return (Json) object;
+
       throw new IllegalStateException("Object is not a struct");
    }
 
