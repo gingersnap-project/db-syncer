@@ -2,6 +2,7 @@ package io.gingersnapproject.cdc.chain;
 
 import io.gingersnapproject.cdc.configuration.Rule;
 
+import org.infinispan.commons.dataconversion.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,10 +50,13 @@ public class EventFilterLink extends EventProcessingChain {
    private boolean acceptEvent(Event event) {
       if (isDdl(event)) return false;
 
-      return event.value().has("source") && event.value().at("source").has("table");
+      if (!event.value().has("source") || event.value().at("source").equals(Json.nil()))
+         return false;
+
+      return event.value().at("source").has("table") && !event.value().at("source").at("table").equals(Json.nil());
    }
 
    private boolean isDdl(Event event) {
-      return event.value().has("ddl") && event.value().at("ddl") != null;
+      return event.value().has("ddl") && !event.value().at("ddl").equals(Json.nil());
    }
 }

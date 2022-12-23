@@ -92,32 +92,30 @@ public class EngineWrapper {
 
    public void start() {
       CacheBackend c = cacheService.backendForRule(name, rule);
-      if (c != null) {
-         EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
-         this.engine = DebeziumEngine.create(Connect.class)
-               .using(properties)
-               .using(this.getClass().getClassLoader())
-               .notifying(new BatchConsumer(this, chain, executor))
-               .using(new DebeziumEngine.ConnectorCallback() {
-                  @Override
-                  public void taskStarted() {
-                     eventing.connectorStarted(name, config.database().type());
-                  }
+      EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
+      this.engine = DebeziumEngine.create(Connect.class)
+            .using(properties)
+            .using(this.getClass().getClassLoader())
+            .notifying(new BatchConsumer(this, chain, executor))
+            .using(new DebeziumEngine.ConnectorCallback() {
+               @Override
+               public void taskStarted() {
+                  eventing.connectorStarted(name, config.database().type());
+               }
 
-                  @Override
-                  public void taskStopped() {
-                     eventing.connectorStopped(name);
-                  }
-               })
-               .using((success, message, error) -> {
-                  if (error != null) eventing.connectorFailed(name, error);
-               })
-               .build();
-         if (stopped)
-            CompletionStages.join(cacheService.reconnect(name, rule));
-         executor.submit(engine);
-         stopped = false;
-      }
+               @Override
+               public void taskStopped() {
+                  eventing.connectorStopped(name);
+               }
+            })
+            .using((success, message, error) -> {
+               if (error != null) eventing.connectorFailed(name, error);
+            })
+            .build();
+      if (stopped)
+         CompletionStages.join(cacheService.reconnect(name, rule));
+      executor.submit(engine);
+      stopped = false;
    }
 
    public void stop() throws IOException {

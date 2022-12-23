@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.google.protobuf.util.JsonFormat;
+import org.junit.jupiter.api.TestInstance;
 
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
 import io.gingersnapproject.proto.api.config.v1alpha1.Key;
@@ -16,6 +17,7 @@ import io.gingersnapproject.proto.api.config.v1alpha1.KeyFormat;
 import io.gingersnapproject.proto.api.config.v1alpha1.NamespacedObjectReference;
 import io.gingersnapproject.proto.api.config.v1alpha1.Value;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class JSONMappingTest {
     public static String eRuleTestCaseJSON= "{\n" +
     "  \"cacheRef\": {\n" +
