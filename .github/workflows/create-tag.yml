@@ -9,7 +9,7 @@ on:
         default: "release_pipeline"
       
 env:
-  GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}   
+  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  
   release-version: ${{ github.event.inputs.ref }}
 
 jobs:
@@ -25,8 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with: 
-          ref: ${{ github.event.inputs.ref }}
-          token: ${{ secrets.MY_TOKEN }}   
+          ref: ${{ github.event.inputs.ref }} 
           
       - name: Tag the release
         run: |
