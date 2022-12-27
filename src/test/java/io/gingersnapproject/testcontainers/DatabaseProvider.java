@@ -6,7 +6,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
 
 public interface DatabaseProvider {
 
-   JdbcDatabaseContainer<?> createDatabase(String name);
+   JdbcDatabaseContainer<?> createDatabase();
 
    Map<String, String> properties();
 }

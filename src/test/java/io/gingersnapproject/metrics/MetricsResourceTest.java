@@ -27,12 +27,12 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 @QuarkusTest
 @WithDatabase(value = MySQL.class, rule = MetricsResourceTest.RULE, properties = {
-      @KeyValue(key = "gingersnap.rule.sa-east.connector.schema", value = "debezium"),
-      @KeyValue(key = "gingersnap.rule.sa-east.connector.table", value = "customer"),
-      @KeyValue(key = "gingersnap.rule.sa-east.key-columns", value = "id")
+      @KeyValue(key = "gingersnap.rule.metricstest.connector.schema", value = "debezium"),
+      @KeyValue(key = "gingersnap.rule.metricstest.connector.table", value = "customer"),
+      @KeyValue(key = "gingersnap.rule.metricstest.key-columns", value = "id")
 })
 public class MetricsResourceTest {
-   static final String RULE = "sa-east";
+   static final String RULE = "metricstest";
    private static final NamingConvention NAMING_CONVENTION = new PrometheusNamingConvention();
    private static final String DEBEZIUM_METRICS = "%s{gingersnap=\"debezium_connector\",}";
    private static final String COUNTER_CACHE_SERVICE_METRICS = "%s_total{gingersnap=\"cache_service\",}";

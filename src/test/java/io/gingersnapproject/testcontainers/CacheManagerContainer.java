@@ -1,7 +1,5 @@
 package io.gingersnapproject.testcontainers;
 
-import static io.gingersnapproject.testcontainers.BaseGingersnapResourceLifecycleManager.databaseKind;
-
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.Base58;
@@ -10,8 +8,8 @@ import org.testcontainers.utility.DockerImageName;
 public class CacheManagerContainer extends GenericContainer<CacheManagerContainer> {
 
    private static final String QUARKUS_DATASOURCE_REACTIVE_URL = "QUARKUS_DATASOURCE_REACTIVE_URL";
-   private static final String QUARKUS_DATASOURCE_DBKIND = "QUARKUS_DATASOURCE_DBKIND";
    private String databaseUrl;
+   private String ruleName;
 
    public CacheManagerContainer() {
       super(DockerImageName.parse("quay.io/gingersnap/cache-manager:latest"));
@@ -22,6 +20,11 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
 
    public CacheManagerContainer withDatabaseUrl(String databaseUrl) {
       this.databaseUrl = databaseUrl;
+      return self();
+   }
+
+   public CacheManagerContainer withRuleName(String ruleName) {
+      this.ruleName = ruleName;
       return self();
    }
 
@@ -40,7 +43,13 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
    @Override
    public void start() {
       withEnv(QUARKUS_DATASOURCE_REACTIVE_URL, databaseUrl);
-      withEnv(QUARKUS_DATASOURCE_DBKIND, databaseKind(databaseUrl));
+      if (ruleName != null && !ruleName.isEmpty()) {
+         // The where clause should use the same column the db-syncer uses.
+         withEnv(String.format("gingersnap_rule_%s_select_statement", ruleName), "select fullname, email from customer where fullname = ?");
+         withEnv(String.format("gingersnap_rule_%s_connector_schema", ruleName), "debezium");
+         withEnv(String.format("gingersnap_rule_%s_connector_table", ruleName), "customer");
+      }
+
       super.start();
    }
 }

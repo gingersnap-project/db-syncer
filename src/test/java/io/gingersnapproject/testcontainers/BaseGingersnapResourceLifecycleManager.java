@@ -3,7 +3,7 @@ package io.gingersnapproject.testcontainers;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import io.gingersnapproject.testcontainers.annotation.KeyValue;
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
@@ -13,13 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.output.OutputFrame;
 
 public class BaseGingersnapResourceLifecycleManager implements
       QuarkusTestResourceConfigurableLifecycleManager<WithDatabase> {
 
    private static final Logger log = LoggerFactory.getLogger(BaseGingersnapResourceLifecycleManager.class);
-   private static final String LABEL = "io.gingersnapproject.test";
-   protected static final AtomicInteger users = new AtomicInteger();
+   private static final Pattern RULE_NAME_PATTERN = Pattern.compile("^[a-z\\d]+$");
    private CacheManagerContainer cacheManager;
    private JdbcDatabaseContainer<?> database;
    private final Map<String, String> runtimeProperties = new HashMap<>();
@@ -33,6 +33,7 @@ public class BaseGingersnapResourceLifecycleManager implements
       try {
          this.delegate = clazz.getConstructor().newInstance();
          ruleName = annotation.rule();
+         if (!ruleName.isEmpty()) assertCompatibleRuleName(ruleName);
          runtimeProperties.putAll(convert(annotation.properties()));
       } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
          throw new RuntimeException(String.format("Failed instantiating: %s", clazz.getSimpleName()));
@@ -41,20 +42,27 @@ public class BaseGingersnapResourceLifecycleManager implements
 
    @Override
    public Map<String, String> start() {
-      String label = String.format("container-%d", users.incrementAndGet());
-      log.info("Starting container with label {}", label);
-      database = delegate.createDatabase(String.valueOf(users.get()));
+      try {
+         return internalStart();
+      } catch (Throwable t) {
+         if (cacheManager != null) {
+            log.error("Failed container output: \n{}", cacheManager.getLogs(OutputFrame.OutputType.STDOUT), t);
+         }
+         throw t;
+      }
+   }
+
+   private Map<String, String> internalStart() {
+      database = delegate.createDatabase();
 
       assert database != null : "Database can not be null";
-
-      database.withLabel(LABEL, label);
 
       if (!database.isRunning()) database.start();
 
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
       cacheManager = new CacheManagerContainer()
             .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind(database.getJdbcUrl()), database.getFirstMappedPort(), database.getDatabaseName()))
-            .withLabel(LABEL, label);
+            .withRuleName(ruleName);
       cacheManager.start();
 
       Map<String, String> properties = new HashMap<>(Map.of(
@@ -96,5 +104,9 @@ public class BaseGingersnapResourceLifecycleManager implements
       String replace = url.replace("jdbc:", "");
       String[] values = replace.split(":");
       return values[0];
+   }
+
+   private static void assertCompatibleRuleName(String name) {
+      assert RULE_NAME_PATTERN.matcher(name).matches() : String.format("Rule '%s' is not a valid name", name);
    }
 }

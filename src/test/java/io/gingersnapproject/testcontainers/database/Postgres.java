@@ -22,7 +22,7 @@ public class Postgres implements DatabaseProvider {
    }
 
    @Override
-   public JdbcDatabaseContainer<?> createDatabase(String name) {
+   public JdbcDatabaseContainer<?> createDatabase() {
       JdbcDatabaseContainer<?> container = new PostgreSQLContainer(IMAGE)
             .withUsername("gingersnap_user")
             .withPassword("password")
