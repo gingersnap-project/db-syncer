@@ -26,11 +26,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
 
 @QuarkusTest
-@WithDatabase(value = MySQL.class, rule = MetricsResourceTest.RULE, properties = {
-      @KeyValue(key = "gingersnap.rule.metricstest.connector.schema", value = "debezium"),
-      @KeyValue(key = "gingersnap.rule.metricstest.connector.table", value = "customer"),
-      @KeyValue(key = "gingersnap.rule.metricstest.key-columns", value = "id")
-})
+@WithDatabase(value = MySQL.class, rules = MetricsResourceTest.RULE)
 public class MetricsResourceTest {
    static final String RULE = "metricstest";
    private static final NamingConvention NAMING_CONVENTION = new PrometheusNamingConvention();

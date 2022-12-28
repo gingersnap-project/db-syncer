@@ -9,7 +9,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@WithDatabase(value = MySQL.class)
+@WithDatabase(value = MySQL.class, rules = {"rule1", "rule2"})
 public class HealthCheckerTest {
    @Test
    public void testHealthEndpointDefined() {

@@ -24,7 +24,7 @@ public class BaseGingersnapResourceLifecycleManager implements
    private JdbcDatabaseContainer<?> database;
    private final Map<String, String> runtimeProperties = new HashMap<>();
    private DatabaseProvider delegate;
-   private String ruleName;
+   private String[] rules;
 
    @Override
    public final void init(WithDatabase annotation) {
@@ -32,8 +32,8 @@ public class BaseGingersnapResourceLifecycleManager implements
 
       try {
          this.delegate = clazz.getConstructor().newInstance();
-         ruleName = annotation.rule();
-         if (!ruleName.isEmpty()) assertCompatibleRuleName(ruleName);
+         rules = annotation.rules();
+         for (String rule : rules) assertCompatibleRuleName(rule);
          runtimeProperties.putAll(convert(annotation.properties()));
       } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
          throw new RuntimeException(String.format("Failed instantiating: %s", clazz.getSimpleName()));
@@ -62,7 +62,7 @@ public class BaseGingersnapResourceLifecycleManager implements
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
       cacheManager = new CacheManagerContainer()
             .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind(database.getJdbcUrl()), database.getFirstMappedPort(), database.getDatabaseName()))
-            .withRuleName(ruleName);
+            .withRules(rules);
       cacheManager.start();
 
       Map<String, String> properties = new HashMap<>(Map.of(
@@ -73,11 +73,11 @@ public class BaseGingersnapResourceLifecycleManager implements
             "gingersnap.database.password", database.getPassword()
       ));
 
-      if (!ruleName.isEmpty()) {
+      for (String rule : rules) {
          properties.putAll(Map.of(
-               "gingersnap.rule.%s.connector.schema".formatted(ruleName), "debezium",
-               "gingersnap.rule.%s.connector.table".formatted(ruleName), "customer",
-               "gingersnap.rule.%s.key-columns".formatted(ruleName), "fullname"
+               "gingersnap.rule.%s.connector.schema".formatted(rule), "debezium",
+               "gingersnap.rule.%s.connector.table".formatted(rule), "customer",
+               "gingersnap.rule.%s.key-columns".formatted(rule), "fullname"
          ));
       }
 

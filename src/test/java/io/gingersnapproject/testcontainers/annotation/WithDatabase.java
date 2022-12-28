@@ -19,5 +19,5 @@ public @interface WithDatabase {
 
    Class<? extends DatabaseProvider> value();
 
-   String rule() default "";
+   String[] rules() default {};
 }
