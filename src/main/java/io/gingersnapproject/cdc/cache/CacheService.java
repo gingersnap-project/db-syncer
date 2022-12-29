@@ -8,9 +8,9 @@ import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.configuration.Rule;
 
 public interface CacheService {
-   CompletionStage<Boolean> reconnect();
+   CompletionStage<Boolean> reconnect(String name, Rule rule);
 
-   CompletionStage<Void> stop();
+   void stop(String name);
 
    CacheBackend backendForRule(String name, Rule rule);
 

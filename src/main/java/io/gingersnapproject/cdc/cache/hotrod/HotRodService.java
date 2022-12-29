@@ -12,6 +12,7 @@ import io.gingersnapproject.cdc.translation.ColumnStringTranslator;
 import io.gingersnapproject.cdc.translation.IdentityTranslator;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 import io.gingersnapproject.metrics.DBSyncerMetrics;
+
 import io.quarkus.runtime.ShutdownEvent;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -20,15 +21,22 @@ import org.infinispan.client.hotrod.multimap.RemoteMultimapCacheManagerFactory;
 import org.infinispan.commons.api.CacheContainerAdmin;
 import org.infinispan.commons.configuration.StringConfiguration;
 import org.infinispan.commons.dataconversion.MediaType;
+import org.infinispan.commons.util.concurrent.CompletableFutures;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
+
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class HotRodService implements CacheService {
+   private static final String OFFSET_CACHE_NAME = "___debezium-offset";
+   private static final String SCHEMA_CACHE_NAME = "___debezium-schema";
 
    @Inject NotificationManager eventing;
 
@@ -38,70 +46,80 @@ public class HotRodService implements CacheService {
 
    volatile RemoteCacheManager rcm;
 
+   private final Map<String, CacheBackend> backends = new ConcurrentHashMap<>();
+   private volatile boolean shutdownSignal;
+
    @PostConstruct
    public void init() {
       rcm = new RemoteCacheManager(config.cache().uri());
       createCaches();
-      eventing.backendStartedEvent(false);
    }
 
-   public void shutdown(@Observes ShutdownEvent e) {
+   public void shutdown(@Observes ShutdownEvent ignore) {
       if (rcm != null) {
-         rcm.stopAsync().whenComplete((ignore, t) -> {
-            if (t != null) {
-               eventing.backendFailedEvent(t);
-            } else {
-               eventing.backendStoppedEvent();
-            }
-         });
-         rcm = null;
+         shutdownSignal = true;
+         if (backends.values().stream().noneMatch(CacheBackend::isRunning)) destroy();
       }
    }
-
-   private static final String OFFSET_CACHE_NAME = "___debezium-offset";
-   private static final String SCHEMA_CACHE_NAME = "___debezium-schema";
 
    @Override
-   public CompletionStage<Boolean> reconnect() {
-      if (rcm == null) {
-         throw new IllegalStateException("RemoteCacheManager not initialized");
-      }
-      return rcm.startAsync().handle((__, t) -> {
-         boolean successful = t == null;
-         if (successful) {
-            createCaches();
-            eventing.backendStartedEvent(true);
+   public CompletionStage<Boolean> reconnect(String name, Rule rule) {
+      if (!backends.containsKey(name)) return CompletableFutures.completedFalse();
+
+      return CompletableFuture.supplyAsync(() -> {
+         backendForRule(name, rule).start();
+         return null;
+      }).handle((ignore, t) -> {
+         if (t != null) {
+            eventing.backendFailedEvent(name, t);
+            return false;
          }
-         return successful;
+         createCaches();
+         return true;
       });
    }
 
    @Override
-   public CompletionStage<Void> stop() {
-      if (rcm == null) {
-         throw new IllegalStateException("RemoteCacheManager not initialized");
-      }
-      return rcm.stopAsync();
+   public void stop(String name) {
+      if (!backends.containsKey(name)) throw new IllegalStateException(String.format("Backend for %s not created", name));
+      backends.computeIfPresent(name, (ignore, cache) -> {
+         cache.stop();
+         return cache;
+      });
+
+      if (shutdownSignal) destroy();
+   }
+
+   private void destroy() {
+      CompletionStage<Void> cs = rcm.stopAsync();
+      rcm = null;
+      CompletableFutures.uncheckedAwait(cs.toCompletableFuture());
    }
 
    @Override
    public CacheBackend backendForRule(String name, Rule rule) {
+      return backends.computeIfAbsent(name, ignore -> createBackend(name, rule));
+   }
+
+   private CacheBackend createBackend(String name, Rule rule) {
       JsonTranslator<?> valueTranslator = rule.valueColumns().isPresent() ?
             new ColumnJsonTranslator(rule.valueColumns().get()) : IdentityTranslator.getInstance();
       JsonTranslator<?> keyTranslator = switch (rule.keyType()) {
          case TEXT -> new ColumnStringTranslator(rule.keyColumns(), rule.plainSeparator());
          case JSON -> new ColumnJsonTranslator(rule.keyColumns());
          case UNRECOGNIZED -> throw new UnsupportedOperationException("Unimplemented case: " + rule.keyType());
-         default -> throw new IllegalArgumentException("Unexpected value: " + rule.keyType());
       };
 
       if (rcm == null)
          throw new IllegalStateException("RemoteCacheManager not initialized");
 
-      return new HotRodCacheBackend(rcm.getCache(name), keyTranslator, valueTranslator, eventing, metrics);
+      getOrCreateCacheBackendCache(name, rcm);
+      var cache = new HotRodCacheBackend(rcm.getCache(name), keyTranslator, valueTranslator, eventing, metrics);
+      cache.start();
+      return cache;
    }
 
-   private void getOrCreateCacheBackendCache(String name, RemoteCacheManager rcm) {
+   private static void getOrCreateCacheBackendCache(String name, RemoteCacheManager rcm) {
       rcm.administration()
             .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
             .getOrCreateCache(name, new StringConfiguration(

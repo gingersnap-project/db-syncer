@@ -60,10 +60,7 @@ public class ManagedEngine implements DynamicRuleManagement {
    }
 
    void backendFailed(@Observes Events.BackendFailedEvent ev) {
-      for (Map.Entry<String, Rule> entry : config.rules().entrySet()) {
-         engineError(entry.getKey());
-         break;
-      }
+      engineError(ev.name());
    }
 
    public void engineError(String name) {

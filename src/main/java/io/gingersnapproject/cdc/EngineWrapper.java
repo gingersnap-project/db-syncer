@@ -114,17 +114,19 @@ public class EngineWrapper {
                })
                .build();
          if (stopped)
-            CompletionStages.join(cacheService.reconnect());
+            CompletionStages.join(cacheService.reconnect(name, rule));
          executor.submit(engine);
          stopped = false;
       }
    }
 
    public void stop() throws IOException {
-      engine.close();
-      engine = null;
-      cacheService.stop();
-      stopped = true;
+      if (!stopped) {
+         stopped = true;
+         engine.close();
+         engine = null;
+         cacheService.stop(name);
+      }
    }
 
    public void notifyError(Throwable t) {
@@ -132,7 +134,7 @@ public class EngineWrapper {
    }
 
    public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect();
+      return cacheService.reconnect(name, rule);
    }
 
    public String getName() {

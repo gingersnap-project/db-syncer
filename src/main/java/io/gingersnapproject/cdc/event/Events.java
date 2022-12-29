@@ -6,11 +6,11 @@ public class Events {
 
    private Events() { }
 
-   public record BackendFailedEvent(Throwable throwable) { }
+   public record BackendFailedEvent(String name, Throwable throwable) { }
 
-   public record BackendStartedEvent(boolean reconnect) { }
+   public record BackendStartedEvent(String name, boolean reconnect) { }
 
-   public record BackendStoppedEvent() { }
+   public record BackendStoppedEvent(String name) { }
 
    public record ConnectorFailedEvent(String name, Throwable throwable) { }
 
