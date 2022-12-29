@@ -8,4 +8,10 @@ public interface CacheBackend {
    CompletionStage<Void> remove(Json json);
 
    CompletionStage<Void> put(Json json);
+
+   void stop();
+
+   void start();
+
+   boolean isRunning();
 }

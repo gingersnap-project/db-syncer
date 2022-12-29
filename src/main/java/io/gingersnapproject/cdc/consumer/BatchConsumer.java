@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
@@ -18,6 +19,7 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.infinispan.client.hotrod.exceptions.HotRodClientException;
 import org.infinispan.commons.dataconversion.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +66,7 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
          committer.markBatchFinished();
       } catch (Throwable t) {
          log.info("Exception encountered writing updates for engine {}", engine.getName(), t);
-         engine.notifyError(t);
+         if (!isBackendFailure(t)) engine.notifyError(t);
       }
    }
 
@@ -87,5 +89,12 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
       } catch (InterruptedException e) {
          throw new RuntimeException(e);
       }
+   }
+
+   private boolean isBackendFailure(Throwable t) {
+      if (t == null) return false;
+      if (t instanceof CompletionException) return isBackendFailure(t.getCause());
+
+      return t instanceof HotRodClientException;
    }
 }

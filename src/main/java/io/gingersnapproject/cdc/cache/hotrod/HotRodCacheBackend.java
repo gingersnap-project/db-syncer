@@ -16,15 +16,18 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 
 public class HotRodCacheBackend implements CacheBackend {
+   private final String name;
    final RemoteCache<String, String> remoteCache;
    final JsonTranslator<?> keyTranslator;
    final JsonTranslator<?> valueTranslator;
    private final NotificationManager eventing;
    private final BiConsumer<Object, Throwable> eventBiConsumer;
    private final DBSyncerMetrics metrics;
+   private boolean stopped;
 
    public HotRodCacheBackend(RemoteCache<String, String> remoteCache, JsonTranslator<?> keyTranslator,
                              JsonTranslator<?> valueTranslator, NotificationManager eventing, DBSyncerMetrics metrics) {
+      this.name = remoteCache.getName();
       this.remoteCache = remoteCache.withDataFormat(DataFormat.builder()
             .keyType(MediaType.TEXT_PLAIN).valueType(MediaType.TEXT_PLAIN).build());
       this.keyTranslator = keyTranslator;
@@ -32,7 +35,7 @@ public class HotRodCacheBackend implements CacheBackend {
       this.eventing = eventing;
       this.eventBiConsumer = (ignore, t) -> {
          if (t != null) {
-            this.eventing.backendFailedEvent(t);
+            this.eventing.backendFailedEvent(name, t);
          }
       };
       this.metrics = metrics;
@@ -64,5 +67,24 @@ public class HotRodCacheBackend implements CacheBackend {
          record.recordThrowable(t);
          return CompletableFuture.failedFuture(t);
       }
+   }
+
+   @Override
+   public void stop() {
+      remoteCache.stop();
+      eventing.backendStoppedEvent(name);
+      stopped = true;
+   }
+
+   @Override
+   public void start() {
+      remoteCache.start();
+      eventing.backendStartedEvent(name, stopped);
+      stopped = false;
+   }
+
+   @Override
+   public boolean isRunning() {
+      return !stopped;
    }
 }

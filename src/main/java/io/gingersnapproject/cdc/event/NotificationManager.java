@@ -39,15 +39,15 @@ public class NotificationManager {
       connectorStoppedEvent.fire(new Events.ConnectorStoppedEvent(name));
    }
 
-   public void backendStartedEvent(boolean reconnect) {
-      backendStartedEvent.fire(new Events.BackendStartedEvent(reconnect));
+   public void backendStartedEvent(String name, boolean reconnect) {
+      backendStartedEvent.fire(new Events.BackendStartedEvent(name, reconnect));
    }
 
-   public void backendFailedEvent(Throwable throwable) {
-      backendFailedEvent.fire(new Events.BackendFailedEvent(throwable));
+   public void backendFailedEvent(String name, Throwable throwable) {
+      backendFailedEvent.fire(new Events.BackendFailedEvent(name, throwable));
    }
 
-   public void backendStoppedEvent() {
-      backendStoppedEvent.fire(new Events.BackendStoppedEvent());
+   public void backendStoppedEvent(String name) {
+      backendStoppedEvent.fire(new Events.BackendStoppedEvent(name));
    }
 }

@@ -22,8 +22,9 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    private static final Logger log = LoggerFactory.getLogger(RemoteOffsetStore.class);
 
    private NotificationManager eventing;
+   private CacheService cacheService;
    private OffsetBackend offsetBackend;
-   private String topicName;
+   private String rule;
 
    @Override
    public void start() {
@@ -33,6 +34,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    @Override
    public void stop() {
       log.info("Stopping remote offset store.");
+      cacheService.stop(rule);
    }
 
    @Override
@@ -40,7 +42,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Getting {}", collection);
       return offsetBackend.get(collection).whenComplete((v, t) -> {
          if (t != null) {
-            eventing.connectorFailed(topicName, t);
+            eventing.connectorFailed(rule, t);
          }
       }).toCompletableFuture();
    }
@@ -50,7 +52,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Setting {}", map);
       return offsetBackend.set(map, callback).whenComplete((v, t) -> {
          if (t != null) {
-            eventing.connectorFailed(topicName, t);
+            eventing.connectorFailed(rule, t);
          }
       }).toCompletableFuture();
    }
@@ -58,8 +60,8 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    @Override
    public void configure(WorkerConfig workerConfig) {
       log.info("Configuring offset store {}", workerConfig);
-      topicName = (String) workerConfig.originals().get(TOPIC_NAME);
-      CacheService cacheService = ArcUtil.instance(CacheService.class);
+      rule = (String) workerConfig.originals().get(TOPIC_NAME);
+      cacheService = ArcUtil.instance(CacheService.class);
       offsetBackend = cacheService.offsetBackend();
       eventing = ArcUtil.instance(NotificationManager.class);
    }
