@@ -5,21 +5,24 @@ import io.micrometer.core.instrument.Timer;
 
 import java.time.Duration;
 
+import static io.gingersnapproject.metrics.micrometer.TagUtil.CACHE_SERVICE;
+import static io.gingersnapproject.metrics.micrometer.TagUtil.COMPONENT_KEY;
+
 /**
  * Cache service timer metrics
  */
 public enum TimerMetrics {
 
-   CACHE_PUT_OK("success_cache_puts", "The latency of successful cache service put operations"),
-   CACHE_PUT_FAILED("failed_cache_puts", "The latency of failed cache service put operations"),
-   CACHE_REMOVE_OK("success_cache_removes", "The latency of successful cache service remove operations"),
-   CACHE_REMOVE_FAILED("failed_cache_removes", "The latency of failed cache service remove operations");
+   CACHE_PUT_OK("cache.put.successes", "The latency of successful cache service put operations"),
+   CACHE_PUT_FAILED("cache.put.fails", "The latency of failed cache service put operations"),
+   CACHE_REMOVE_OK("cache.remove.successes", "The latency of successful cache service remove operations"),
+   CACHE_REMOVE_FAILED("cache.remove.fails", "The latency of failed cache service remove operations");
 
    final String metricName;
    final String description;
 
    TimerMetrics(String metricName, String description) {
-      this.metricName = metricName;
+      this.metricName = "gingersnap." + metricName;
       this.description = description;
    }
 
@@ -30,7 +33,7 @@ public enum TimerMetrics {
    Timer register(MeterRegistry registry) {
       return Timer.builder(metricName)
             .description(description)
-            .tags("gingersnap", "cache_service")
+            .tags(COMPONENT_KEY, CACHE_SERVICE)
             .maximumExpectedValue(Duration.ofSeconds(1))
             .serviceLevelObjectives(
                   Duration.ofMillis(1),
