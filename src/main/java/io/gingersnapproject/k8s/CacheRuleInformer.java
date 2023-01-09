@@ -67,98 +67,101 @@ public class CacheRuleInformer {
       }
    }
 
-   private static final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
-      final DynamicRuleManagement drm;
+}
 
-      private interface SendEventFunc {
-         void sendEvent(String name, EagerCacheRuleSpec rule);
-      }
+final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
+   private static final Logger log = LoggerFactory.getLogger(ConfigMapEventHandler.class);
+   final DynamicRuleManagement drm;
 
-      public ConfigMapEventHandler(DynamicRuleManagement drm) {
-         this.drm = drm;
-      }
+   private interface SendEventFunc {
+      void sendEvent(String name, EagerCacheRuleSpec rule);
+   }
 
-      private void processConfigMapAndSend(Set<Map.Entry<String, String>> entries, SendEventFunc f) {
-         for (Entry<String, String> entry : entries) {
-            Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
-            try {
-               JsonFormat.parser().ignoringUnknownFields().merge(entry.getValue(), eRuleBuilder);
-            } catch (InvalidProtocolBufferException e) {
-               log.error("Cannot parse eager rule with name {}", entry.getKey(), e);
-            }
-            f.sendEvent(entry.getKey(), eRuleBuilder.build());
+   public ConfigMapEventHandler(DynamicRuleManagement drm) {
+      this.drm = drm;
+   }
+
+   private void processConfigMapAndSend(Set<Map.Entry<String, String>> entries, SendEventFunc f) {
+      for (Entry<String, String> entry : entries) {
+         Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
+         try {
+            JsonFormat.parser().ignoringUnknownFields().merge(entry.getValue(), eRuleBuilder);
+         } catch (InvalidProtocolBufferException e) {
+            log.error("Cannot parse eager rule with name {}", entry.getKey(), e);
          }
+         f.sendEvent(entry.getKey(), eRuleBuilder.build());
       }
+   }
 
-      @Override
-      public void onAdd(ConfigMap obj) {
-         processConfigMapAndSend(obj.getData().entrySet(), (name, rule) -> {
-            log.debug("calling DynamicRuleManagement.addRule({},{}", name, rule.toString());
-            drm.addRule(name, new EagerCacheRuleSpecAdapter(rule));
-         });
+   @Override
+   public void onAdd(ConfigMap obj) {
+      processConfigMapAndSend(obj.getData().entrySet(), (name, rule) -> {
+         log.debug("calling DynamicRuleManagement.addRule({},{}", name, rule.toString());
+         drm.addRule(name, new EagerCacheRuleSpecAdapter(rule));
+      });
+   }
+
+   @Override
+   public void onUpdate(ConfigMap oldObj, ConfigMap newObj) {
+      Map<String, String> oldMap = oldObj.getData();
+      Map<String, String> newMap = newObj.getData();
+      var olds = oldMap.entrySet();
+      var news = newMap.entrySet();
+
+      checkNoUpdatesOrThrow(oldMap, newMap, olds, news);
+
+      var added = new HashSet<Map.Entry<String, String>>(news);
+      // Get added keys. From new set remove
+      // - keys already present in old set
+      added.removeIf(arg0 -> {
+         return oldMap.containsKey(arg0.getKey());
+      });
+
+      var removed = new HashSet<Map.Entry<String, String>>(olds);
+      // Get removed keys. From old set remove
+      // - keys still present in new set
+      removed.removeIf((arg0 -> {
+         return newMap.containsKey(arg0.getKey());
+      }));
+
+      processConfigMapAndSend(removed, (name, rule) -> {
+         log.debug("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
+         drm.removeRule(name);
+      });
+      processConfigMapAndSend(added, (name, rule) -> {
+         log.debug("calling DynamicRuleManagement.addRule({},{}", name, rule.toString());
+         drm.addRule(name, new EagerCacheRuleSpecAdapter(rule));
+      });
+   }
+
+   private void checkNoUpdatesOrThrow(Map<String, String> oldMap, Map<String, String> newMap,
+         Set<Entry<String, String>> olds,
+         Set<Entry<String, String>> news) {
+      var changedNewValues = new HashSet<Map.Entry<String, String>>(news);
+      // Get the changed keys. From the new set remove
+      // - keys which aren't in the old set (added)
+      // - keys which are in the new set with same value (unchanged)
+      changedNewValues.removeIf(
+            arg0 -> !oldMap.containsKey(arg0.getKey()) || arg0.getValue().equals(oldMap.get(arg0.getKey())));
+      if (changedNewValues.size() > 0) {
+         // Update rule is unsupported and this should never happens. Assuption here is
+         // that the configMap
+         // is corrupted, so we raise an exception and no events are sent to the rule
+         // manager. Exception contains rule with old and new values
+         var changedOldValues = new HashSet<Map.Entry<String, String>>(olds);
+         changedOldValues.removeIf(
+               arg0 -> !newMap.containsKey(arg0.getKey()) || arg0.getValue().equals(newMap.get(arg0.getKey())));
+         throw new UnsupportedOperationException("Rules cannot be updated: new values " + changedNewValues.toString()
+               + ", old values " + changedOldValues.toString());
       }
+   }
 
-      @Override
-      public void onUpdate(ConfigMap oldObj, ConfigMap newObj) {
-         Map<String, String> oldMap = oldObj.getData();
-         Map<String, String> newMap = newObj.getData();
-         var olds = oldMap.entrySet();
-         var news = newMap.entrySet();
-
-         checkNoUpdatesOrThrow(oldMap, newMap, olds, news);
-
-         var added = new HashSet<Map.Entry<String, String>>(news);
-         // Get added keys. From new set remove
-         // - keys already present in old set
-         added.removeIf(arg0 -> {
-            return oldMap.containsKey(arg0.getKey());
-         });
-
-         var removed = new HashSet<Map.Entry<String, String>>(olds);
-         // Get removed keys. From old set remove
-         // - keys still present in new set
-         removed.removeIf((arg0 -> {
-            return newMap.containsKey(arg0.getKey());
-         }));
-
-         processConfigMapAndSend(removed, (name, rule) -> {
-            log.debug("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
-            drm.removeRule(name);
-         });
-         processConfigMapAndSend(added, (name, rule) -> {
-            log.debug("calling DynamicRuleManagement.addRule({},{}", name, rule.toString());
-            drm.addRule(name, new EagerCacheRuleSpecAdapter(rule));
-         });
-      }
-
-      private void checkNoUpdatesOrThrow(Map<String, String> oldMap, Map<String, String> newMap, Set<Entry<String, String>> olds,
-            Set<Entry<String, String>> news) {
-         var changedNewValues = new HashSet<Map.Entry<String, String>>(news);
-         // Get the changed keys. From the new set remove
-         // - keys which aren't in the old set (added)
-         // - keys which are in the new set with same value (unchanged)
-         changedNewValues.removeIf(
-               arg0 -> !oldMap.containsKey(arg0.getKey()) || arg0.getValue().equals(oldMap.get(arg0.getKey())));
-         if (changedNewValues.size() > 0) {
-            // Update rule is unsupported and this should never happens. Assuption here is
-            // that the configMap
-            // is corrupted, so we raise an exception and no events are sent to the rule
-            // manager. Exception contains rule with old and new values
-            var changedOldValues = new HashSet<Map.Entry<String, String>>(olds);
-            changedOldValues.removeIf(
-                  arg0 -> !newMap.containsKey(arg0.getKey()) || arg0.getValue().equals(newMap.get(arg0.getKey())));
-            throw new UnsupportedOperationException("Rules cannot be updated: new values " + changedNewValues.toString()
-                  + ", old values " + changedOldValues.toString());
-         }
-      }
-
-      @Override
-      public void onDelete(ConfigMap obj, boolean deletedFinalStateUnknown) {
-         processConfigMapAndSend(obj.getData().entrySet(), (name, rule) -> {
-            log.debug("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
-            drm.removeRule(name);
-         });
-      }
+   @Override
+   public void onDelete(ConfigMap obj, boolean deletedFinalStateUnknown) {
+      processConfigMapAndSend(obj.getData().entrySet(), (name, rule) -> {
+         log.debug("calling DynamicRuleManagement.removeRule({},{}", name, rule.toString());
+         drm.removeRule(name);
+      });
    }
 }
 
@@ -227,7 +230,6 @@ class EagerCacheRuleSpecAdapter implements Rule {
    @Override
    public Optional<List<String>> valueColumns() {
       var list = eagerRule.getValue().getValueColumnsList();
-      return Optional.ofNullable(list.size()>0 ? list : null);
+      return Optional.ofNullable(list.size() > 0 ? list : null);
    }
-
 }
