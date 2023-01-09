@@ -21,11 +21,14 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.concurrent.TimeUnit;
 
+import static io.gingersnapproject.metrics.micrometer.TagUtil.CACHE_SERVICE;
+import static io.gingersnapproject.metrics.micrometer.TagUtil.COMPONENT_KEY;
+
 @ApplicationScoped
 public class MicrometerMetrics implements DBSyncerMetrics {
 
    private static final Logger log = LoggerFactory.getLogger(MicrometerMetrics.class);
-   public static final String RECONNECT_METRIC_NAME = "number_of_reconnects";
+   public static final String RECONNECT_METRIC_NAME = "gingersnap.reconnects";
 
    private final MeterRegistry registry;
    private final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -37,7 +40,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
       // TODO convert to enum if more the one global counter
       reconnectEvents = Counter.builder(RECONNECT_METRIC_NAME)
             .description("The number of reconnections event to the Cache Service")
-            .tag("gingersnap", "cache_service")
+            .tag(COMPONENT_KEY, CACHE_SERVICE)
             .register(registry);
       Arrays.stream(TimerMetrics.values()).forEach(metric -> timerMetrics.put(metric, metric.register(registry)));
    }

@@ -9,7 +9,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
 
 public abstract class BaseGingersnapResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
-   public static final String RULE = "us-east";
+   public static final String RULE_NAME = "us-east";
    private CacheManagerContainer cacheManager;
 
    private JdbcDatabaseContainer<?> database;
@@ -33,9 +33,9 @@ public abstract class BaseGingersnapResourceLifecycleManager implements QuarkusT
             "gingersnap.database.port", Integer.toString(database.getFirstMappedPort()),
             "gingersnap.database.user", database.getUsername(),
             "gingersnap.database.password", database.getPassword(),
-            "gingersnap.rule.%s.connector.schema".formatted(RULE), "debezium",
-            "gingersnap.rule.%s.connector.table".formatted(RULE), "customer",
-            "gingersnap.rule.%s.key-columns".formatted(RULE), "fullname"
+            "gingersnap.rule.%s.connector.schema".formatted(RULE_NAME), "debezium",
+            "gingersnap.rule.%s.connector.table".formatted(RULE_NAME), "customer",
+            "gingersnap.rule.%s.key-columns".formatted(RULE_NAME), "fullname"
       ));
       enrichProperties(properties);
       return properties;
