@@ -50,6 +50,4 @@ jobs:
           file: src/main/docker/Dockerfile.jvm
           push: true
           tags: quay.io/gingersnap/db-syncer:${{ steps.vars.outputs.LATEST_TAG }}
-          build-args: |
-            db_syncer_VERSION=${{ steps.vars.outputs.LATEST_TAG }}
             
