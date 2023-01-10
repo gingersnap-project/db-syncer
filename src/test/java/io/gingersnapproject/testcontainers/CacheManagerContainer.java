@@ -9,10 +9,13 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
 
    private static final String QUARKUS_DATASOURCE_REACTIVE_URL = "QUARKUS_DATASOURCE_REACTIVE_URL";
    private String databaseUrl;
+   private String dbUser;
+   private String dbPassword;
+   private String dbKind;
    private String[] rules;
 
    public CacheManagerContainer() {
-      super(DockerImageName.parse("quay.io/gingersnap/cache-manager:latest"));
+      super(DockerImageName.parse("local-cache-manager:latest"));
       withNetworkAliases("infinispan-" + Base58.randomString(6));
       withExposedPorts(8080, 11222);
       waitingFor(Wait.forHttp("/q/health").forPort(8080));
@@ -20,6 +23,21 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
 
    public CacheManagerContainer withDatabaseUrl(String databaseUrl) {
       this.databaseUrl = databaseUrl;
+      return self();
+   }
+
+   public CacheManagerContainer withDatabaseUser(String dbUser) {
+      this.dbUser = dbUser;
+      return self();
+   }
+
+   public CacheManagerContainer withDatabasePassword(String dbPassword) {
+      this.dbPassword = dbPassword;
+      return self();
+   }
+
+   public CacheManagerContainer withDatabaseKind(String dbKind) {
+      this.dbKind = dbKind;
       return self();
    }
 
@@ -42,7 +60,12 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
 
    @Override
    public void start() {
-      withEnv(QUARKUS_DATASOURCE_REACTIVE_URL, databaseUrl);
+      withEnv(String.format("quarkus_datasource_%s_username", dbKind), dbUser);
+      withEnv(String.format("quarkus_datasource_%s_password", dbKind), dbPassword);
+      withEnv(String.format("quarkus_datasource_mysql_reactive_url", dbKind), "");
+      withEnv(String.format("quarkus_datasource_%s_reactive_url", dbKind), databaseUrl);
+
+
       if (rules != null) {
          for (String rule : rules) {
             // The where clause should use the same column the db-syncer uses.

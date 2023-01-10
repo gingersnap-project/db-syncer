@@ -1,5 +1,6 @@
 package io.gingersnapproject.testcontainers;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,6 +48,8 @@ public class BaseGingersnapResourceLifecycleManager implements
       } catch (Throwable t) {
          if (cacheManager != null) {
             log.error("Failed container output: \n{}", cacheManager.getLogs(OutputFrame.OutputType.STDOUT), t);
+         } else {
+            log.error("Cache manager was not initialized!", t);
          }
          throw t;
       }
@@ -60,8 +63,12 @@ public class BaseGingersnapResourceLifecycleManager implements
       if (!database.isRunning()) database.start();
 
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
+      String databaseKind = databaseKind(database.getJdbcUrl());
       cacheManager = new CacheManagerContainer()
-            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind(database.getJdbcUrl()), database.getFirstMappedPort(), database.getDatabaseName()))
+            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind, database.getFirstMappedPort(), database.getDatabaseName()))
+            .withDatabaseKind(databaseKind)
+            .withDatabaseUser(database.getUsername())
+            .withDatabasePassword(database.getPassword())
             .withRules(rules);
       cacheManager.start();
 
@@ -108,5 +115,34 @@ public class BaseGingersnapResourceLifecycleManager implements
 
    private static void assertCompatibleRuleName(String name) {
       assert RULE_NAME_PATTERN.matcher(name).matches() : String.format("Rule '%s' is not a valid name", name);
+   }
+
+   public static class RepeatableGingersnapResource implements QuarkusTestResourceConfigurableLifecycleManager<WithDatabase.WithDatabases> {
+      private final Map<WithDatabase, BaseGingersnapResourceLifecycleManager> resources = new HashMap<>();
+
+      @Override
+      public void init(WithDatabase.WithDatabases annotation) {
+         for (WithDatabase db : annotation.value()) {
+            var resource = new BaseGingersnapResourceLifecycleManager();
+            resource.init(db);
+            resources.put(db, resource);
+         }
+      }
+
+      @Override
+      public Map<String, String> start() {
+         Map<String, String> properties = new HashMap<>();
+         for (var resource : resources.values()) {
+            properties.putAll(resource.start());
+         }
+         return properties;
+      }
+
+      @Override
+      public void stop() {
+         for (var resource : resources.values()) {
+            resource.stop();
+         }
+      }
    }
 }

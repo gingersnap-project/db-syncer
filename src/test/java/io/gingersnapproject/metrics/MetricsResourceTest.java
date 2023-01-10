@@ -6,7 +6,6 @@ import io.gingersnapproject.metrics.micrometer.StreamingMetrics;
 import io.gingersnapproject.metrics.micrometer.TagUtil;
 import io.gingersnapproject.metrics.micrometer.TimerMetrics;
 import io.gingersnapproject.testcontainers.database.MySQL;
-import io.gingersnapproject.testcontainers.annotation.KeyValue;
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
 
 import io.micrometer.core.instrument.Meter;
@@ -30,9 +29,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 public class MetricsResourceTest {
    static final String RULE = "metricstest";
    private static final NamingConvention NAMING_CONVENTION = new PrometheusNamingConvention();
-   private static final String DEBEZIUM_METRICS = "%s{gingersnap=\"debezium_connector\",}";
-   private static final String COUNTER_CACHE_SERVICE_METRICS = "%s_total{gingersnap=\"cache_service\",}";
-   private static final String TIMER_CACHE_SERVICE_METRICS = "%s_seconds_count{gingersnap=\"cache_service\",}";
 
    @Test
    public void testMetricsEndpoint() {
