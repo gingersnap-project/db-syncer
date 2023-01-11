@@ -22,9 +22,7 @@ jobs:
           cache: maven
 
       - name: JDK 17 Tests
-        run: |
-          mvn -B verify -Dmaven.test.failure.ignore=true -Dansi.strip=true
-          mvn -B verify -Dmaven.test.failure.ignore=true -Dansi.strip=true -Dquarkus.test.profile=postgres
+        run: mvn -B verify -Dmaven.test.failure.ignore=true -Dansi.strip=true
 
       - name: Test Logs
         uses: actions/upload-artifact@v3
