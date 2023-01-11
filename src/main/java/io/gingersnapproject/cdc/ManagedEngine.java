@@ -120,7 +120,8 @@ public class ManagedEngine implements DynamicRuleManagement {
        });
    }
 
-   private enum Status {
+   // Accessible during tests.
+   enum Status {
       SHUTDOWN,
       RUNNING,
       STOPPING,
@@ -128,12 +129,13 @@ public class ManagedEngine implements DynamicRuleManagement {
       RETRYING;
    }
 
-   private static class StartStopEngine {
+   // Accessible during tests.
+   static class StartStopEngine {
       private final EngineWrapper engine;
       private Status status = Status.STOPPED;
       private ReschedulingTask<Boolean> task;
 
-      public StartStopEngine(EngineWrapper engine) {
+      private StartStopEngine(EngineWrapper engine) {
          this.engine = engine;
       }
 
