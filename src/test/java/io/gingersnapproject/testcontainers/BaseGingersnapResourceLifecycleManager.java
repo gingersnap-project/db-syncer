@@ -64,9 +64,8 @@ public class BaseGingersnapResourceLifecycleManager implements
 
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
       String databaseKind = databaseKind(database.getJdbcUrl());
-      cacheManager = new CacheManagerContainer()
+      cacheManager = new CacheManagerContainer(databaseKind)
             .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind, database.getFirstMappedPort(), database.getDatabaseName()))
-            .withDatabaseKind(databaseKind)
             .withDatabaseUser(database.getUsername())
             .withDatabasePassword(database.getPassword())
             .withRules(rules);

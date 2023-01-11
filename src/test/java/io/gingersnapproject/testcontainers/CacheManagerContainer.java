@@ -7,15 +7,15 @@ import org.testcontainers.utility.DockerImageName;
 
 public class CacheManagerContainer extends GenericContainer<CacheManagerContainer> {
 
-   private static final String QUARKUS_DATASOURCE_REACTIVE_URL = "QUARKUS_DATASOURCE_REACTIVE_URL";
    private String databaseUrl;
    private String dbUser;
    private String dbPassword;
    private String dbKind;
    private String[] rules;
 
-   public CacheManagerContainer() {
-      super(DockerImageName.parse("local-cache-manager:latest"));
+   public CacheManagerContainer(String kind) {
+      super(DockerImageName.parse(String.format("cache-manager-%s:latest", kind)));
+      this.dbKind = kind;
       withNetworkAliases("infinispan-" + Base58.randomString(6));
       withExposedPorts(8080, 11222);
       waitingFor(Wait.forHttp("/q/health").forPort(8080));
@@ -33,11 +33,6 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
 
    public CacheManagerContainer withDatabasePassword(String dbPassword) {
       this.dbPassword = dbPassword;
-      return self();
-   }
-
-   public CacheManagerContainer withDatabaseKind(String dbKind) {
-      this.dbKind = dbKind;
       return self();
    }
 
