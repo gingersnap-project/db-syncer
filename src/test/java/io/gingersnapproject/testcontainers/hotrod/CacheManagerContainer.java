@@ -1,16 +1,15 @@
-package io.gingersnapproject.testcontainers;
+package io.gingersnapproject.testcontainers.hotrod;
 
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.Base58;
 import org.testcontainers.utility.DockerImageName;
 
-public class CacheManagerContainer extends GenericContainer<CacheManagerContainer> {
+public class CacheManagerContainer extends HotRodContainer<CacheManagerContainer> {
 
+   private final String dbKind;
    private String databaseUrl;
    private String dbUser;
    private String dbPassword;
-   private String dbKind;
    private String[] rules;
 
    public CacheManagerContainer(String kind) {
@@ -39,18 +38,6 @@ public class CacheManagerContainer extends GenericContainer<CacheManagerContaine
    public CacheManagerContainer withRules(String ... rules) {
       this.rules = rules;
       return self();
-   }
-
-   public int hotrodPort() {
-      return getMappedPort(11222);
-   }
-
-   public int restPort() {
-      return getMappedPort(8080);
-   }
-
-   public String hotrodUri() {
-      return String.format("hotrod://%s:%d", getHost(), hotrodPort());
    }
 
    @Override

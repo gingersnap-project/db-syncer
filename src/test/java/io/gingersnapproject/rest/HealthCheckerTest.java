@@ -2,7 +2,6 @@ package io.gingersnapproject.rest;
 
 import static io.restassured.RestAssured.given;
 
-
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
 
 import io.quarkus.test.junit.QuarkusTest;

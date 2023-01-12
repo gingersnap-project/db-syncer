@@ -5,8 +5,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import io.gingersnapproject.testcontainers.annotation.KeyValue;
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
+import io.gingersnapproject.testcontainers.annotation.KeyValue;
+import io.gingersnapproject.testcontainers.hotrod.CacheManagerContainer;
+import io.gingersnapproject.testcontainers.hotrod.HotRodContainer;
+import io.gingersnapproject.testcontainers.hotrod.InfinispanContainer;
 
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
 import org.slf4j.Logger;
@@ -20,7 +23,7 @@ public class BaseGingersnapResourceLifecycleManager implements
 
    private static final Logger log = LoggerFactory.getLogger(BaseGingersnapResourceLifecycleManager.class);
    private static final Pattern RULE_NAME_PATTERN = Pattern.compile("^[a-z\\d]+$");
-   private CacheManagerContainer cacheManager;
+   private HotRodContainer<?> cacheManager;
    private JdbcDatabaseContainer<?> database;
    private final Map<String, String> runtimeProperties = new HashMap<>();
    private DatabaseProvider delegate;
@@ -31,7 +34,7 @@ public class BaseGingersnapResourceLifecycleManager implements
       var clazz = annotation.value();
 
       try {
-         if (clazz.isInterface()) clazz = Profiles.provider();
+         if (clazz.isInterface()) clazz = Profiles.database();
          this.delegate = clazz.getConstructor().newInstance();
          rules = annotation.rules();
          for (String rule : rules) assertCompatibleRuleName(rule);
@@ -64,15 +67,11 @@ public class BaseGingersnapResourceLifecycleManager implements
 
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
       String databaseKind = databaseKind(database.getJdbcUrl());
-      cacheManager = new CacheManagerContainer(databaseKind)
-            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", databaseKind, database.getFirstMappedPort(), database.getDatabaseName()))
-            .withDatabaseUser(database.getUsername())
-            .withDatabasePassword(database.getPassword())
-            .withRules(rules);
+      cacheManager = createHotRodContainer(databaseKind);
       cacheManager.start();
 
       Map<String, String> properties = new HashMap<>(Map.of(
-            "gingersnap.cache.uri", cacheManager.hotrodUri(),
+            "gingersnap.cache.uri", cacheManager.hotRodURI(),
             "gingersnap.database.host", database.getHost(),
             "gingersnap.database.port", Integer.toString(database.getFirstMappedPort()),
             "gingersnap.database.user", database.getUsername(),
@@ -114,5 +113,18 @@ public class BaseGingersnapResourceLifecycleManager implements
 
    private static void assertCompatibleRuleName(String name) {
       assert RULE_NAME_PATTERN.matcher(name).matches() : String.format("Rule '%s' is not a valid name", name);
+   }
+
+   private HotRodContainer<?> createHotRodContainer(String dbKind) {
+      var clazz = Profiles.hotRod();
+      if (clazz.equals(InfinispanContainer.class)) {
+         return new InfinispanContainer();
+      }
+
+      return new CacheManagerContainer(dbKind)
+            .withDatabaseUrl(String.format("%s://host.testcontainers.internal:%s/%s", dbKind, database.getFirstMappedPort(), database.getDatabaseName()))
+            .withDatabaseUser(database.getUsername())
+            .withDatabasePassword(database.getPassword())
+            .withRules(rules);
    }
 }

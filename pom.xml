@@ -210,6 +210,18 @@
             </configuration>
           </execution>
           <execution>
+            <id>infinispan</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <reportNameSuffix>infinispan</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>infinispan</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
             <id>mysql</id>
             <goals>
               <goal>test</goal>
