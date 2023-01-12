@@ -202,6 +202,50 @@
             <maven.home>${maven.home}</maven.home>
           </systemPropertyVariables>
         </configuration>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <configuration>
+              <skip>true</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>infinispan</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <reportNameSuffix>infinispan</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>infinispan</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <id>mysql</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <reportNameSuffix>mysql</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>mysql</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <id>postgres</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <reportNameSuffix>postgres</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>postgres</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
