@@ -19,18 +19,19 @@ import com.google.protobuf.util.JsonFormat;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.gingersnapproject.cdc.DynamicRuleManagement;
 import io.gingersnapproject.cdc.configuration.Rule;
+import io.gingersnapproject.k8s.informer.ConfigMapInformer;
 import io.gingersnapproject.proto.JSONMappingTest;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
 
 public class ConfigMapEventHandlerTest {
 
-    static ConfigMapEventHandler cmeh;
+    static ConfigMapInformer cmeh;
     static DynamicRuleManagement drmMock;
 
     @BeforeAll
     public static void setup() {
         drmMock = Mockito.mock(DynamicRuleManagement.class);
-        cmeh = new ConfigMapEventHandler(drmMock);
+        cmeh = new ConfigMapInformer(drmMock);
     }
 
     @BeforeEach
@@ -126,7 +127,7 @@ public class ConfigMapEventHandlerTest {
 
 }
 
-class EagerCacheRuleSpecAdapterForTest  extends EagerCacheRuleSpecAdapter {
+class EagerCacheRuleSpecAdapterForTest  extends ConfigMapInformer.EagerCacheRuleSpecAdapter {
     public EagerCacheRuleSpecAdapterForTest(EagerCacheRuleSpec eagerRule) {
         super(eagerRule);
     }

@@ -1,15 +1,12 @@
-package io.gingersnapproject.k8s;
+package io.gingersnapproject.k8s.informer;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 
 import io.gingersnapproject.cdc.DynamicRuleManagement;
@@ -18,72 +15,36 @@ import io.gingersnapproject.cdc.configuration.Rule;
 import io.gingersnapproject.k8s.configuration.KubernetesConfiguration;
 import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec;
 import io.gingersnapproject.proto.api.config.v1alpha1.KeyFormat;
-import io.gingersnapproject.proto.api.config.v1alpha1.EagerCacheRuleSpec.Builder;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
-import io.quarkus.runtime.ShutdownEvent;
-import io.quarkus.runtime.StartupEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-public class CacheRuleInformer {
+public class ConfigMapInformer implements KubernetesInformer<ConfigMap> {
 
-   private static final Logger log = LoggerFactory.getLogger(CacheRuleInformer.class);
+   private static final Logger log = LoggerFactory.getLogger(ConfigMapInformer.class);
 
-   @Inject
-   Instance<KubernetesClient> client;
    @Inject
    KubernetesConfiguration configuration;
+
    @Inject
    DynamicRuleManagement drm;
-   private SharedIndexInformer<ConfigMap> informer;
 
-   void startWatching(@Observes StartupEvent ignore) {
-      if (client.isUnsatisfied() || configuration.configMapName().isEmpty()) {
-         log.info("Kubernetes client not found, not watching config map");
-         return;
-      }
+   public ConfigMapInformer() { }
 
-      String ruleName = configuration.configMapName().get();
-      log.info("Informer on rules in {}", ruleName);
-      var RESYNC_PERIOD = 60 * 1000L;
-      KubernetesClient kc = client.get();
-      informer = kc.configMaps().withName(ruleName).inform(new ConfigMapEventHandler(drm), RESYNC_PERIOD);
-      informer.start();
-   }
-
-   public void stop(@Observes ShutdownEvent ignore) {
-      if (informer != null) {
-         log.info("Shutdown informer");
-         informer.close();
-      }
-   }
-
-}
-
-final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
-   private static final Logger log = LoggerFactory.getLogger(ConfigMapEventHandler.class);
-   final DynamicRuleManagement drm;
-
-   private interface SendEventFunc {
-      void sendEvent(String name, EagerCacheRuleSpec rule);
-   }
-
-   public ConfigMapEventHandler(DynamicRuleManagement drm) {
+   // For testing only.
+   public ConfigMapInformer(DynamicRuleManagement drm) {
       this.drm = drm;
    }
 
    private void processConfigMapAndSend(Set<Map.Entry<String, String>> entries, SendEventFunc f) {
-      for (Entry<String, String> entry : entries) {
-         Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
+      for (Map.Entry<String, String> entry : entries) {
+         EagerCacheRuleSpec.Builder eRuleBuilder = EagerCacheRuleSpec.newBuilder();
          try {
             JsonFormat.parser().ignoringUnknownFields().merge(entry.getValue(), eRuleBuilder);
          } catch (InvalidProtocolBufferException e) {
@@ -91,6 +52,12 @@ final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
          }
          f.sendEvent(entry.getKey(), eRuleBuilder.build());
       }
+   }
+
+   @Override
+   public SharedIndexInformer<ConfigMap> register(KubernetesClient kc) {
+      String ruleName = configuration.configMapName().get();
+      return kc.configMaps().withName(ruleName).inform(this, 60 * 1000);
    }
 
    @Override
@@ -135,8 +102,7 @@ final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
    }
 
    private void checkNoUpdatesOrThrow(Map<String, String> oldMap, Map<String, String> newMap,
-         Set<Entry<String, String>> olds,
-         Set<Entry<String, String>> news) {
+                                      Set<Map.Entry<String, String>> olds, Set<Map.Entry<String, String>> news) {
       var changedNewValues = new HashSet<Map.Entry<String, String>>(news);
       // Get the changed keys. From the new set remove
       // - keys which aren't in the old set (added)
@@ -151,8 +117,9 @@ final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
          var changedOldValues = new HashSet<Map.Entry<String, String>>(olds);
          changedOldValues.removeIf(
                arg0 -> !newMap.containsKey(arg0.getKey()) || arg0.getValue().equals(newMap.get(arg0.getKey())));
-         throw new UnsupportedOperationException("Rules cannot be updated: new values " + changedNewValues.toString()
-               + ", old values " + changedOldValues.toString());
+         throw new UnsupportedOperationException(
+               "Rules cannot be updated: new values " + changedNewValues.toString() + ", old values "
+                     + changedOldValues.toString());
       }
    }
 
@@ -163,73 +130,69 @@ final class ConfigMapEventHandler implements ResourceEventHandler<ConfigMap> {
          drm.removeRule(name);
       });
    }
-}
 
-// Used only by CacheRuleInformer
-class EagerCacheRuleSpecAdapter implements Rule {
-   private final class ConnectorImplementation implements Connector {
-      private final String[] schemaTable;
+   private interface SendEventFunc {
+      void sendEvent(String name, EagerCacheRuleSpec rule);
+   }
 
-      private ConnectorImplementation(String[] schemaTable) {
-         this.schemaTable = schemaTable;
+   // Used only by CacheRuleInformer
+   public static class EagerCacheRuleSpecAdapter implements Rule {
+      private final EagerCacheRuleSpec eagerRule;
+
+      public EagerCacheRuleSpecAdapter(EagerCacheRuleSpec eagerRule) {
+         this.eagerRule = eagerRule;
+      }
+
+      private record ConnectorImplementation(String[] schemaTable) implements Connector {
+
+         @Override
+         public String schema() {
+            return schemaTable[0];
+         }
+
+         @Override
+         public String table() {
+            return schemaTable[1];
+         }
       }
 
       @Override
-      public String schema() {
-         return schemaTable[0];
-      }
+      public Connector connector() {
+         String[] schemaTable = eagerRule.getTableName().split("\\.");
+         return switch (schemaTable.length) {
+            case 1 -> new Connector() {
+               @Override public String schema() {
+                  return "";
+               }
 
-      @Override
-      public String table() {
-         return schemaTable[1];
-      }
-   }
-
-   final EagerCacheRuleSpec eagerRule;
-
-   public EagerCacheRuleSpecAdapter(EagerCacheRuleSpec eagerRule) {
-      this.eagerRule = eagerRule;
-   }
-
-   @Override
-   public Connector connector() {
-      String[] schemaTable = eagerRule.getTableName().split("\\.");
-      return switch (schemaTable.length) {
-         case 1 -> new Connector() {
-            @Override
-            public String schema() {
-               return "";
-            }
-
-            @Override
-            public String table() {
-               return schemaTable[0];
-            }
+               @Override public String table() {
+                  return schemaTable[0];
+               }
+            };
+            case 2 -> new ConnectorImplementation(schemaTable);
+            default -> throw new IllegalArgumentException("Unsupported schema format (must be table or schema.table)");
          };
-         case 2 -> new ConnectorImplementation(schemaTable);
-         default ->
-            throw new IllegalArgumentException("Unsupported schema format (must be table or schema.table)");
-      };
-   }
+      }
 
-   @Override
-   public KeyFormat keyType() {
-      return eagerRule.getKey().getFormat();
-   }
+      @Override
+      public KeyFormat keyType() {
+         return eagerRule.getKey().getFormat();
+      }
 
-   @Override
-   public String plainSeparator() {
-      return eagerRule.getKey().getKeySeparator();
-   }
+      @Override
+      public String plainSeparator() {
+         return eagerRule.getKey().getKeySeparator();
+      }
 
-   @Override
-   public List<String> keyColumns() {
-      return eagerRule.getKey().getKeyColumnsList();
-   }
+      @Override
+      public List<String> keyColumns() {
+         return eagerRule.getKey().getKeyColumnsList();
+      }
 
-   @Override
-   public Optional<List<String>> valueColumns() {
-      var list = eagerRule.getValue().getValueColumnsList();
-      return Optional.ofNullable(list.size() > 0 ? list : null);
+      @Override
+      public Optional<List<String>> valueColumns() {
+         var list = eagerRule.getValue().getValueColumnsList();
+         return Optional.ofNullable(list.size() > 0 ? list : null);
+      }
    }
 }
