@@ -1,5 +1,7 @@
 package io.gingersnapproject.cdc.event;
 
+import java.net.URI;
+
 import io.gingersnapproject.cdc.connector.DatabaseProvider;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -27,6 +29,9 @@ public class NotificationManager {
    @Inject Event<Events.BackendFailedEvent> backendFailedEvent;
    @Inject Event<Events.BackendStoppedEvent> backendStoppedEvent;
 
+   @Inject Event<Events.CacheMemberJoinEvent> memberJoinEvent;
+   @Inject Event<Events.CacheMemberLeaveEvent> memberLeaveEvent;
+
    public void connectorFailed(String name, Throwable t) {
       connectorFailedEvent.fire(new Events.ConnectorFailedEvent(name, t));
    }
@@ -49,5 +54,13 @@ public class NotificationManager {
 
    public void backendStoppedEvent(String name) {
       backendStoppedEvent.fire(new Events.BackendStoppedEvent(name));
+   }
+
+   public void memberJoinEvent(URI uri) {
+      memberJoinEvent.fire(new Events.CacheMemberJoinEvent(uri));
+   }
+
+   public void memberLeaveEvent(URI uri) {
+      memberLeaveEvent.fire(new Events.CacheMemberLeaveEvent(uri));
    }
 }

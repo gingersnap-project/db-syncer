@@ -1,5 +1,7 @@
 package io.gingersnapproject.cdc.event;
 
+import java.net.URI;
+
 import io.gingersnapproject.cdc.connector.DatabaseProvider;
 
 public class Events {
@@ -17,4 +19,8 @@ public class Events {
    public record ConnectorStartedEvent(String name, DatabaseProvider databaseProvider) { }
 
    public record ConnectorStoppedEvent(String name) { }
+
+   public record CacheMemberJoinEvent(URI uri) { }
+
+   public record CacheMemberLeaveEvent(URI uri) { }
 }

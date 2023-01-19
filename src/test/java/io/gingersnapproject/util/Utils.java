@@ -2,6 +2,7 @@ package io.gingersnapproject.util;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
@@ -14,10 +15,33 @@ public class Utils {
    private Utils() { }
 
    @SuppressWarnings("unchecked")
+   public static <R, O> R extractField(O instance, String field) {
+      return extractField((Class<? super O>) instance.getClass(), field, instance);
+   }
+
+   @SuppressWarnings("unchecked")
    public static <R, O> R extractField(Class<O> clazz, String field, O instance) {
       var value = ReflectionUtils.tryToReadFieldValue(clazz, field, instance);;
       return (R) value.getOrThrow(e ->
             new RuntimeException(String.format("Unable to read field '%s' of %s", field, clazz.getSimpleName()), e));
+   }
+
+   public static <R, O> R invokePrivateMethod(O instance, String method, Object ... args) {
+      var parameterTypes = new Class[args.length];
+      for (int i = 0; i < args.length; i++) {
+         parameterTypes[i] = args[i].getClass();
+      }
+      var optional = ReflectionUtils.findMethod(instance.getClass(), method, parameterTypes);
+      return optional
+            .map(m -> {
+               m.trySetAccessible();
+               try {
+                  return (R) m.invoke(instance, args);
+               } catch (IllegalAccessException | InvocationTargetException e) {
+                  return null;
+               }
+            })
+            .orElseThrow(() -> new RuntimeException(String.format("Method '%s' not found", method)));
    }
 
    public static void eventually(Supplier<String> messageSupplier, BooleanSupplier condition, long timeout, TimeUnit timeUnit) {
