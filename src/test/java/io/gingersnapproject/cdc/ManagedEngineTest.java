@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.configuration.Cache;
 import io.gingersnapproject.cdc.configuration.Configuration;
@@ -66,7 +67,8 @@ public class ManagedEngineTest {
 
       managedEngine.start(null);
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq("rule"), any());
+      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
+      verify(cacheServiceMock, times(1)).backendForRule(eq(identifier), any());
 
       Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 
@@ -95,7 +97,7 @@ public class ManagedEngineTest {
          return s == ManagedEngine.Status.SHUTDOWN;
       };
       Utils.eventually(() -> "Engine did not shutdown", bs, 5, TimeUnit.SECONDS);
-      verify(cacheServiceMock).stop(eq("rule"));
+      verify(cacheServiceMock).stop(eq(identifier));
    }
 
    @Test
@@ -104,7 +106,8 @@ public class ManagedEngineTest {
 
       managedEngine.start(null);
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq("rule"), any());
+      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
+      verify(cacheServiceMock, times(1)).backendForRule(eq(identifier), any());
 
       Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 
@@ -123,7 +126,7 @@ public class ManagedEngineTest {
          return s == ManagedEngine.Status.RETRYING;
       };
       Utils.eventually(() -> "Engine did not enter into retry", bs, 10, TimeUnit.SECONDS);
-      verify(cacheServiceMock).stop(eq("rule"));
+      verify(cacheServiceMock).stop(eq(identifier));
    }
 
    @Test
@@ -132,8 +135,8 @@ public class ManagedEngineTest {
 
       managedEngine.start(null);
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq("rule-1"), any());
-      verify(cacheServiceMock, times(1)).backendForRule(eq("rule-2"), any());
+      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule-1", URI.create("hotrod://localhost:11222"))), any());
+      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule-2", URI.create("hotrod://localhost:11222"))), any());
 
       Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
       assertEquals(2, engines.size());
@@ -170,7 +173,7 @@ public class ManagedEngineTest {
    public void testAddingAndRemovingRule() {
       managedEngine.addRule("rule", new MockTestRule());
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq("rule"), any());
+      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"))), any());
 
       Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 

@@ -1,5 +1,6 @@
 package io.gingersnapproject.cdc.remote;
 
+import java.net.URI;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -51,8 +52,9 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
       super.configure(config, comparator, listener, useCatalogBeforeSchema);
       topicName = config.getString(TOPIC_NAME);
+      String uri = config.getString(URI_CACHE);
       CacheService cacheService = ArcUtil.instance(CacheService.class);
-      schemaBackend = cacheService.schemaBackend();
+      schemaBackend = cacheService.schemaBackend(URI.create(uri));
       eventing = ArcUtil.instance(NotificationManager.class);
    }
 

@@ -13,5 +13,7 @@ public interface CacheBackend {
 
    void start();
 
+   boolean reconnect();
+
    boolean isRunning();
 }

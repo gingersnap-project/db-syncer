@@ -1,5 +1,6 @@
 package io.gingersnapproject.cdc.cache;
 
+import java.net.URI;
 import java.util.concurrent.CompletionStage;
 
 import io.gingersnapproject.cdc.CacheBackend;
@@ -8,13 +9,13 @@ import io.gingersnapproject.cdc.SchemaBackend;
 import io.gingersnapproject.cdc.configuration.Rule;
 
 public interface CacheService {
-   CompletionStage<Boolean> reconnect(String name, Rule rule);
+   CompletionStage<Boolean> reconnect(CacheIdentifier identifier, Rule rule);
 
-   void stop(String name);
+   void stop(CacheIdentifier identifier);
 
-   CacheBackend backendForRule(String name, Rule rule);
+   CacheBackend backendForRule(CacheIdentifier identifier, Rule rule);
 
-   OffsetBackend offsetBackend();
+   OffsetBackend offsetBackend(URI managerURI);
 
-   SchemaBackend schemaBackend();
+   SchemaBackend schemaBackend(URI managerURI);
 }

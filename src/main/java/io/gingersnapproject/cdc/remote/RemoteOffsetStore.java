@@ -1,5 +1,6 @@
 package io.gingersnapproject.cdc.remote;
 
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
@@ -22,7 +23,6 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    private static final Logger log = LoggerFactory.getLogger(RemoteOffsetStore.class);
 
    private NotificationManager eventing;
-   private CacheService cacheService;
    private OffsetBackend offsetBackend;
    private String rule;
 
@@ -34,7 +34,6 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    @Override
    public void stop() {
       log.info("Stopping remote offset store.");
-      cacheService.stop(rule);
    }
 
    @Override
@@ -61,8 +60,9 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    public void configure(WorkerConfig workerConfig) {
       log.info("Configuring offset store {}", workerConfig);
       rule = (String) workerConfig.originals().get(TOPIC_NAME);
-      cacheService = ArcUtil.instance(CacheService.class);
-      offsetBackend = cacheService.offsetBackend();
+      String uri = (String) workerConfig.originals().get(URI_CACHE);
+      var cacheService = ArcUtil.instance(CacheService.class);
+      offsetBackend = cacheService.offsetBackend(URI.create(uri));
       eventing = ArcUtil.instance(NotificationManager.class);
    }
 }
