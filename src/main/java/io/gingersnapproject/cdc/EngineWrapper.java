@@ -13,6 +13,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
+
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.chain.EventProcessingChain;
 import io.gingersnapproject.cdc.chain.EventProcessingChainFactory;
@@ -25,7 +27,6 @@ import io.gingersnapproject.cdc.consumer.BatchConsumer;
 import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.remote.RemoteOffsetStore;
 import io.gingersnapproject.cdc.remote.RemoteSchemaHistory;
-import io.gingersnapproject.cdc.util.CompletionStages;
 
 public class EngineWrapper {
 
@@ -91,7 +92,8 @@ public class EngineWrapper {
    }
 
    public void start() {
-      CacheBackend c = cacheService.backendForRule(name, rule);
+      var identifier = CacheIdentifier.of(name, config.cache().uri());
+      CacheBackend c = cacheService.backendForRule(identifier, rule);
       EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
       this.engine = DebeziumEngine.create(Connect.class)
             .using(properties)
@@ -110,10 +112,9 @@ public class EngineWrapper {
             })
             .using((success, message, error) -> {
                if (error != null) eventing.connectorFailed(name, error);
+               cacheService.stop(identifier);
             })
             .build();
-      if (stopped)
-         CompletionStages.join(cacheService.reconnect(name, rule));
       executor.submit(engine);
       stopped = false;
    }
@@ -123,7 +124,6 @@ public class EngineWrapper {
          stopped = true;
          engine.close();
          engine = null;
-         cacheService.stop(name);
       }
    }
 
@@ -132,7 +132,7 @@ public class EngineWrapper {
    }
 
    public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect(name, rule);
+      return cacheService.reconnect(CacheIdentifier.of(name, config.cache().uri()), rule);
    }
 
    public String getName() {

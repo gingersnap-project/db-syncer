@@ -42,6 +42,11 @@ public class ControlledCacheBackend implements CacheBackend {
    public void start() { }
 
    @Override
+   public boolean reconnect() {
+      return true;
+   }
+
+   @Override
    public boolean isRunning() {
       return false;
    }

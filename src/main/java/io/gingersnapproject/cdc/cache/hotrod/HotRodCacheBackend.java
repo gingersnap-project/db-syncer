@@ -84,6 +84,20 @@ public class HotRodCacheBackend implements CacheBackend {
    }
 
    @Override
+   public boolean reconnect() {
+      if (!stopped) return true;
+
+      try {
+         start();
+         return isRunning();
+      } catch (Throwable t) {
+         stopped = true;
+         eventing.backendFailedEvent(name, t);
+      }
+      return false;
+   }
+
+   @Override
    public boolean isRunning() {
       return !stopped;
    }
