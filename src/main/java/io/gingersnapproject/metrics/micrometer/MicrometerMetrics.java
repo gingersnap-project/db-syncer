@@ -51,7 +51,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
    }
 
    void registerMetrics(@Observes Events.ConnectorStartedEvent ev) {
-      String rule = ev.name();
+      String rule = ev.identifier().toString();
       DatabaseProvider db = ev.databaseProvider();
       log.info("Registering metrics for {}", rule);
       if (mBeanServer == null) {
@@ -69,8 +69,8 @@ public class MicrometerMetrics implements DBSyncerMetrics {
    }
 
    void unregisterMetrics(@Observes Events.ConnectorStoppedEvent ev) {
-      log.info("Unregistering metrics for {}", ev.name());
-      rulesMetric.computeIfPresent(ev.name(), (ruleName, ruleMetrics) -> {
+      log.info("Unregistering metrics for {}", ev.identifier());
+      rulesMetric.computeIfPresent(ev.identifier().toString(), (ruleName, ruleMetrics) -> {
          ruleMetrics.ids().forEach(registry::remove);
          return null;
       });

@@ -13,6 +13,7 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.gingersnapproject.cdc.SchemaBackend;
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.util.ArcUtil;
@@ -24,15 +25,15 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
 
    private NotificationManager eventing;
    private SchemaBackend schemaBackend;
-   private String topicName;
+   private CacheIdentifier identifier;
 
    @Override
    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
-      log.info("Storing schema history record {}", record);
+      log.debug("Storing schema history record {}", record);
       try {
          schemaBackend.storeRecord(record);
       } catch (Throwable t) {
-         eventing.connectorFailed(topicName, t);
+         eventing.connectorFailed(identifier, t);
          throw t;
       }
    }
@@ -43,7 +44,7 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
       try {
          schemaBackend.recoverRecords(records);
       } catch (Throwable t) {
-         eventing.connectorFailed(topicName, t);
+         eventing.connectorFailed(identifier, t);
          throw t;
       }
    }
@@ -51,10 +52,11 @@ public class RemoteSchemaHistory extends AbstractSchemaHistory {
    @Override
    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
       super.configure(config, comparator, listener, useCatalogBeforeSchema);
-      topicName = config.getString(TOPIC_NAME);
+      String rule = config.getString(TOPIC_NAME);
       String uri = config.getString(URI_CACHE);
+      identifier = CacheIdentifier.of(rule, URI.create(uri));
       CacheService cacheService = ArcUtil.instance(CacheService.class);
-      schemaBackend = cacheService.schemaBackend(URI.create(uri));
+      schemaBackend = cacheService.schemaBackend(identifier.uri());
       eventing = ArcUtil.instance(NotificationManager.class);
    }
 

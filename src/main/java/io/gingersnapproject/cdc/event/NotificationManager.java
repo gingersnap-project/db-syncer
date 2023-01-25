@@ -2,6 +2,7 @@ package io.gingersnapproject.cdc.event;
 
 import java.net.URI;
 
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.connector.DatabaseProvider;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -32,28 +33,28 @@ public class NotificationManager {
    @Inject Event<Events.CacheMemberJoinEvent> memberJoinEvent;
    @Inject Event<Events.CacheMemberLeaveEvent> memberLeaveEvent;
 
-   public void connectorFailed(String name, Throwable t) {
-      connectorFailedEvent.fire(new Events.ConnectorFailedEvent(name, t));
+   public void connectorFailed(CacheIdentifier identifier, Throwable t) {
+      connectorFailedEvent.fire(new Events.ConnectorFailedEvent(identifier, t));
    }
 
-   public void connectorStarted(String name, DatabaseProvider provider) {
-      connectorStartedEvent.fire(new Events.ConnectorStartedEvent(name, provider));
+   public void connectorStarted(CacheIdentifier identifier, DatabaseProvider provider) {
+      connectorStartedEvent.fire(new Events.ConnectorStartedEvent(identifier, provider));
    }
 
-   public void connectorStopped(String name) {
-      connectorStoppedEvent.fire(new Events.ConnectorStoppedEvent(name));
+   public void connectorStopped(CacheIdentifier identifier) {
+      connectorStoppedEvent.fire(new Events.ConnectorStoppedEvent(identifier));
    }
 
-   public void backendStartedEvent(String name, boolean reconnect) {
-      backendStartedEvent.fire(new Events.BackendStartedEvent(name, reconnect));
+   public void backendStartedEvent(CacheIdentifier identifier, boolean reconnect) {
+      backendStartedEvent.fire(new Events.BackendStartedEvent(identifier, reconnect));
    }
 
-   public void backendFailedEvent(String name, Throwable throwable) {
-      backendFailedEvent.fire(new Events.BackendFailedEvent(name, throwable));
+   public void backendFailedEvent(CacheIdentifier identifier, Throwable throwable) {
+      backendFailedEvent.fire(new Events.BackendFailedEvent(identifier, throwable));
    }
 
-   public void backendStoppedEvent(String name) {
-      backendStoppedEvent.fire(new Events.BackendStoppedEvent(name));
+   public void backendStoppedEvent(CacheIdentifier identifier) {
+      backendStoppedEvent.fire(new Events.BackendStoppedEvent(identifier));
    }
 
    public void memberJoinEvent(URI uri) {

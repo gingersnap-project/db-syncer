@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.gingersnapproject.cdc.OffsetBackend;
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
 import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.util.ArcUtil;
@@ -24,7 +25,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
 
    private NotificationManager eventing;
    private OffsetBackend offsetBackend;
-   private String rule;
+   private CacheIdentifier identifier;
 
    @Override
    public void start() {
@@ -41,7 +42,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Getting {}", collection);
       return offsetBackend.get(collection).whenComplete((v, t) -> {
          if (t != null) {
-            eventing.connectorFailed(rule, t);
+            eventing.connectorFailed(identifier, t);
          }
       }).toCompletableFuture();
    }
@@ -51,7 +52,7 @@ public class RemoteOffsetStore implements OffsetBackingStore {
       log.info("Setting {}", map);
       return offsetBackend.set(map, callback).whenComplete((v, t) -> {
          if (t != null) {
-            eventing.connectorFailed(rule, t);
+            eventing.connectorFailed(identifier, t);
          }
       }).toCompletableFuture();
    }
@@ -59,10 +60,11 @@ public class RemoteOffsetStore implements OffsetBackingStore {
    @Override
    public void configure(WorkerConfig workerConfig) {
       log.info("Configuring offset store {}", workerConfig);
-      rule = (String) workerConfig.originals().get(TOPIC_NAME);
+      String rule = (String) workerConfig.originals().get(TOPIC_NAME);
       String uri = (String) workerConfig.originals().get(URI_CACHE);
+      identifier = CacheIdentifier.of(rule, URI.create(uri));
       var cacheService = ArcUtil.instance(CacheService.class);
-      offsetBackend = cacheService.offsetBackend(URI.create(uri));
+      offsetBackend = cacheService.offsetBackend(identifier.uri());
       eventing = ArcUtil.instance(NotificationManager.class);
    }
 }
