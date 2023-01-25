@@ -16,18 +16,18 @@ public class ConnectorReadiness extends AbstractHealthChecker<String> {
    private static final String CONNECTOR_HEALTH = "Connector health";
 
    void engineStarted(@Observes Events.ConnectorStartedEvent ev) {
-      log.info("Engine {} started", ev.name());
-      isUp(ev.name());
+      log.info("Engine {} started", ev.identifier());
+      isUp(ev.identifier().toString());
    }
 
    void engineStopped(@Observes Events.ConnectorStoppedEvent ev) {
-      log.info("Engine {} stopped", ev.name());
-      isDone(ev.name());
+      log.info("Engine {} stopped", ev.identifier());
+      isDone(ev.identifier().toString());
    }
 
    void engineFailed(@Observes Events.ConnectorFailedEvent ev) {
-      log.error("Engine {} failed", ev.name(), ev.throwable());
-      isDown(ev.name());
+      log.error("Engine {} failed", ev.identifier(), ev.throwable());
+      isDown(ev.identifier().toString());
    }
 
    @Override

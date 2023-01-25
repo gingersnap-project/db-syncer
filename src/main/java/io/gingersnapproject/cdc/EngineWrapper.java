@@ -4,15 +4,8 @@ import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig
 
 import java.io.IOException;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import org.apache.kafka.connect.source.SourceRecord;
-
-import io.debezium.embedded.Connect;
-import io.debezium.engine.ChangeEvent;
-import io.debezium.engine.DebeziumEngine;
 
 import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
@@ -28,11 +21,16 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.remote.RemoteOffsetStore;
 import io.gingersnapproject.cdc.remote.RemoteSchemaHistory;
 
+import io.debezium.embedded.Connect;
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine;
+import org.apache.kafka.connect.source.SourceRecord;
+
 public class EngineWrapper {
 
    private static final ExecutorService executor = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors() * 2), runnable ->
          new Thread(runnable, "engine"));
-   private final String name;
+   private final CacheIdentifier identifier;
    private final CacheService cacheService;
    private final Configuration config;
    private final Rule rule;
@@ -41,9 +39,9 @@ public class EngineWrapper {
    private volatile DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
    private volatile boolean stopped = false;
 
-   private EngineWrapper(String name, Configuration config, Rule rule, Properties properties, CacheService cacheService,
+   private EngineWrapper(CacheIdentifier identifier, Configuration config, Rule rule, Properties properties, CacheService cacheService,
                          NotificationManager eventing) {
-      this.name = name;
+      this.identifier = identifier;
       this.cacheService = cacheService;
       this.config = config;
       this.rule = rule;
@@ -51,17 +49,18 @@ public class EngineWrapper {
       this.properties = properties;
    }
 
-   public EngineWrapper(String name, Configuration config, Rule rule, CacheService cacheService, NotificationManager eventing) {
-      this(name, config, rule, defaultProperties(name, config, rule), cacheService, eventing);
+   public EngineWrapper(CacheIdentifier identifier, Configuration config, Rule rule, CacheService cacheService, NotificationManager eventing) {
+      this(identifier, config, rule, defaultProperties(identifier, config, rule), cacheService, eventing);
    }
 
-   private static Properties defaultProperties(String name, Configuration config, Rule rule) {
+   private static Properties defaultProperties(CacheIdentifier identifier, Configuration config, Rule rule) {
+      String name = identifier.rule();
       Properties props = new Properties();
       props.setProperty("name", "engine");
 
       Connector connector = rule.connector();
       // Required property
-      props.setProperty("topic.prefix", name);
+      props.setProperty("topic.prefix", identifier.toString());
 
       // Database information
       Database database = config.database();
@@ -76,7 +75,7 @@ public class EngineWrapper {
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.
       props.setProperty("converter.schemas.enable", "true"); // Include schema in events, we use to retrieve the key.
 
-      String uri = config.cache().uri().toString();
+      String uri = identifier.uri().toString();
       props.setProperty(RemoteOffsetStore.URI_CACHE, uri);
       props.setProperty(RemoteOffsetStore.TOPIC_NAME, name);
       props.setProperty("offset.storage", RemoteOffsetStore.class.getCanonicalName());
@@ -91,9 +90,8 @@ public class EngineWrapper {
       return props;
    }
 
-   public void start() {
-      var identifier = CacheIdentifier.of(name, config.cache().uri());
-      CacheBackend c = cacheService.backendForRule(identifier, rule);
+   public void start() throws IOException {
+      CacheBackend c = cacheService.start(identifier, rule);
       EventProcessingChain chain = EventProcessingChainFactory.create(rule, c);
       this.engine = DebeziumEngine.create(Connect.class)
             .using(properties)
@@ -102,17 +100,17 @@ public class EngineWrapper {
             .using(new DebeziumEngine.ConnectorCallback() {
                @Override
                public void taskStarted() {
-                  eventing.connectorStarted(name, config.database().type());
+                  eventing.connectorStarted(identifier, config.database().type());
                }
 
                @Override
-               public void taskStopped() {
-                  eventing.connectorStopped(name);
+               public void connectorStopped() {
+                  eventing.connectorStopped(identifier);
+                  cacheService.stop(identifier);
                }
             })
             .using((success, message, error) -> {
-               if (error != null) eventing.connectorFailed(name, error);
-               cacheService.stop(identifier);
+               if (error != null) eventing.connectorFailed(identifier, error);
             })
             .build();
       executor.submit(engine);
@@ -128,15 +126,11 @@ public class EngineWrapper {
    }
 
    public void notifyError(Throwable t) {
-      eventing.connectorFailed(name, t);
-   }
-
-   public CompletionStage<Boolean> cacheServiceAvailable() {
-      return cacheService.reconnect(CacheIdentifier.of(name, config.cache().uri()), rule);
+      eventing.connectorFailed(identifier, t);
    }
 
    public String getName() {
-      return name;
+      return identifier.rule();
    }
 
 }

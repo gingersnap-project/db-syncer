@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import io.gingersnapproject.util.ByRef;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
@@ -21,12 +23,12 @@ public class ReschedulingTaskTest {
 
    @Test
    public void testRescheduledWhilePredicateFalse() throws Exception {
-      Ref<Integer> value = new Ref<>(0);
+      ByRef<Integer> value = new ByRef<>(0);
       var latch = new CountDownLatch(10);
       Supplier<CompletionStage<Integer>> supplier = () -> {
-         value.ref = value.ref + 1;
+         value.setRef(value.ref() + 1);
          latch.countDown();
-         return CompletableFuture.completedFuture(value.ref);
+         return CompletableFuture.completedFuture(value.ref());
       };
       Predicate<Integer> predicate = i -> i > 10;
       var rt = new ReschedulingTask<>(ses, supplier, predicate, 100, TimeUnit.MILLISECONDS, null);
@@ -38,32 +40,24 @@ public class ReschedulingTaskTest {
 
    @Test
    public void testRescheduledWhileThrowing() throws Exception {
-      Ref<Integer> value = new Ref<>(0);
-      Ref<Throwable> exception = new Ref<>(null);
+      ByRef<Integer> value = new ByRef<>(0);
+      ByRef<Throwable> exception = new ByRef<>(null);
       var latch = new CountDownLatch(10);
       Supplier<CompletionStage<Integer>> supplier = () -> {
-         value.ref = value.ref + 1;
+         value.setRef(value.ref() + 1);
          latch.countDown();
-         if (value.ref < 10) return CompletableFuture.failedStage(new RuntimeException("Retry too low"));
-         return CompletableFuture.completedFuture(value.ref);
+         if (value.ref() < 10) return CompletableFuture.failedStage(new RuntimeException("Retry too low"));
+         return CompletableFuture.completedFuture(value.ref());
       };
       Predicate<Integer> predicate = i -> i > 10;
       var rt = new ReschedulingTask<>(ses, supplier, predicate, 100, TimeUnit.MILLISECONDS, e -> {
-         exception.ref = e;
+         exception.setRef(e);
          return true;
       });
 
       rt.schedule();
 
       assert latch.await(2, TimeUnit.SECONDS) : "Task not run";
-      assertNotNull(exception.ref, "Exception not recorded!");
-   }
-
-   private static class Ref<T> {
-      protected T ref;
-
-      private Ref(T ref) {
-         this.ref = ref;
-      }
+      assertNotNull(exception.ref(), "Exception not recorded!");
    }
 }

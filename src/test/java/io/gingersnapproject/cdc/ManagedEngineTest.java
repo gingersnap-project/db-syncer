@@ -1,5 +1,6 @@
 package io.gingersnapproject.cdc;
 
+import static io.gingersnapproject.util.Utils.eventually;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,33 +63,38 @@ public class ManagedEngineTest {
    }
 
    @Test
-   public void testStartupAndShutdownEvents() {
-      when(cacheServiceMock.backendForRule(any(), any())).thenReturn(mock(CacheBackend.class));
+   public void testStartupAndShutdownEvents() throws Exception {
+      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
+      when(cacheServiceMock.start(any(), any())).thenReturn(mock(CacheBackend.class));
 
       managedEngine.start(null);
+      managedEngine.memberJoined(new Events.CacheMemberJoinEvent(identifier.uri()));
 
-      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
-      verify(cacheServiceMock, times(1)).backendForRule(eq(identifier), any());
+      verify(cacheServiceMock, times(1)).start(eq(identifier), any());
 
-      Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
+      Map<String, Rule> knownRules = Utils.extractField(managedEngine, "knownRules");
+      assertEquals(knownRules.size(), 1);
+      assertTrue(knownRules.containsKey("rule"));
+
+      Map<CacheIdentifier, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 
       assertEquals(engines.size(), 1);
-      assertTrue(engines.containsKey("rule"));
+      assertTrue(engines.containsKey(identifier));
 
-      var sse = engines.get("rule");
+      var sse = engines.get(identifier);
       ManagedEngine.Status status = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
       assertEquals(ManagedEngine.Status.RUNNING, status);
 
       // Check we have an event for the connector, since the mock information is invalid we should notify this.
       BooleanSupplier checkInteraction = () -> {
          try {
-            verify(notificationManagerMock).connectorFailed(eq("rule"), any());
+            verify(notificationManagerMock).connectorFailed(any(), any());
          } catch (Throwable ignore) {
             return false;
          }
          return true;
       };
-      Utils.eventually(() -> "No interactions with notifications", checkInteraction, 5, TimeUnit.SECONDS);
+      eventually(() -> "No interactions with notifications", checkInteraction, 5, TimeUnit.SECONDS);
 
       // Now the engines are shutdown
       managedEngine.stop(null);
@@ -96,50 +102,64 @@ public class ManagedEngineTest {
          ManagedEngine.Status s = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
          return s == ManagedEngine.Status.SHUTDOWN;
       };
-      Utils.eventually(() -> "Engine did not shutdown", bs, 5, TimeUnit.SECONDS);
-      verify(cacheServiceMock).stop(eq(identifier));
+      eventually(() -> "Engine did not shutdown", bs, 5, TimeUnit.SECONDS);
    }
 
    @Test
-   public void testEngineTriesToReconnectOnFailure() {
-      when(cacheServiceMock.backendForRule(any(), any())).thenReturn(mock(CacheBackend.class));
+   public void testEngineTriesToReconnectOnFailure() throws Exception {
+      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
+      when(cacheServiceMock.start(any(), any())).thenReturn(mock(CacheBackend.class));
 
       managedEngine.start(null);
+      managedEngine.memberJoined(new Events.CacheMemberJoinEvent(identifier.uri()));
 
-      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
-      verify(cacheServiceMock, times(1)).backendForRule(eq(identifier), any());
+      verify(cacheServiceMock, times(1)).start(eq(identifier), any());
 
-      Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
+      Map<String, Rule> knownRules = Utils.extractField(managedEngine, "knownRules");
+      assertEquals(knownRules.size(), 1);
+      assertTrue(knownRules.containsKey("rule"));
+
+      Map<CacheIdentifier, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 
       assertEquals(1, engines.size());
-      assertTrue(engines.containsKey("rule"));
+      assertTrue(engines.containsKey(identifier));
 
-      var sse = engines.get("rule");
+      var sse = engines.get(identifier);
       ManagedEngine.Status status = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
 
       // Engine still on running as it didn't receive the failure event.
       assertEquals(ManagedEngine.Status.RUNNING, status);
 
-      managedEngine.engineFailed(new Events.ConnectorFailedEvent("rule", null));
+      managedEngine.engineFailed(new Events.ConnectorFailedEvent(identifier, null));
       BooleanSupplier bs = () -> {
          ManagedEngine.Status s = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
          return s == ManagedEngine.Status.RETRYING;
       };
-      Utils.eventually(() -> "Engine did not enter into retry", bs, 10, TimeUnit.SECONDS);
-      verify(cacheServiceMock).stop(eq(identifier));
+      eventually(() -> "Engine did not enter into retry", bs, 10, TimeUnit.SECONDS);
    }
 
    @Test
-   public void testEnginesCoExistOnBackendFailure() {
+   public void testEnginesCoExistOnBackendFailure() throws Exception {
+      var rule1Id = CacheIdentifier.of("rule-1", URI.create("hotrod://10.0.0.1:11222"));
+      var rule2Id = CacheIdentifier.of("rule-2", URI.create("hotrod://10.0.0.2:11222"));
       when(configurationMock.rules()).thenReturn(Map.of("rule-1", new MockTestRule(), "rule-2", new MockTestRule()));
 
       managedEngine.start(null);
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule-1", URI.create("hotrod://localhost:11222"))), any());
-      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule-2", URI.create("hotrod://localhost:11222"))), any());
+      managedEngine.memberJoined(new Events.CacheMemberJoinEvent(rule1Id.uri()));
+      managedEngine.memberJoined(new Events.CacheMemberJoinEvent(rule2Id.uri()));
 
-      Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
-      assertEquals(2, engines.size());
+      verify(cacheServiceMock, times(1)).start(eq(rule1Id), any());
+      verify(cacheServiceMock, times(1)).start(eq(rule2Id), any());
+
+      Map<String, Rule> knownRules = Utils.extractField(managedEngine, "knownRules");
+      assertEquals(knownRules.size(), 2);
+      assertTrue(knownRules.containsKey("rule-1"));
+      assertTrue(knownRules.containsKey("rule-2"));
+
+      Map<CacheIdentifier, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
+      // nbr of rules * nbr of members
+      assertEquals(4, engines.size());
 
       // Assert all engines are in running mode.
       for (var sse : engines.values()) {
@@ -148,52 +168,58 @@ public class ManagedEngineTest {
       }
 
       // Engine from `rule-1` fails, but `rule-2` continues to work.
-      String failedEngine = "rule-1";
-      managedEngine.backendFailed(new Events.BackendFailedEvent(failedEngine, null));
+      managedEngine.backendFailed(new Events.BackendFailedEvent(rule1Id, null));
 
       // After backend failure, engines will stop and enter retry mode.
       for (var entry : engines.entrySet()) {
          var sse = entry.getValue();
-         if (failedEngine.equals(entry.getKey())) {
+         if (rule1Id.equals(entry.getKey())) {
             BooleanSupplier bs = () -> {
                ManagedEngine.Status s = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
+               System.out.println(s);
                return s == ManagedEngine.Status.RETRYING;
             };
-            Utils.eventually(() -> String.format("Engine '%s' did not enter into retry", entry.getKey()), bs, 10, TimeUnit.SECONDS);
+            eventually(() -> String.format("Engine '%s' did not enter into retry", entry.getKey()), bs, 10, TimeUnit.SECONDS);
          } else {
             ManagedEngine.Status status = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
             assertEquals(ManagedEngine.Status.RUNNING, status);
          }
       }
 
-      verify(cacheServiceMock, atMost(2)).stop(any());
+      verify(cacheServiceMock, atMost(4)).stop(any());
    }
 
    @Test
-   public void testAddingAndRemovingRule() {
+   public void testAddingAndRemovingRule() throws Exception {
+      var identifier = CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"));
       managedEngine.addRule("rule", new MockTestRule());
+      managedEngine.memberJoined(new Events.CacheMemberJoinEvent(identifier.uri()));
 
-      verify(cacheServiceMock, times(1)).backendForRule(eq(CacheIdentifier.of("rule", URI.create("hotrod://localhost:11222"))), any());
+      verify(cacheServiceMock, times(1)).start(eq(identifier), any());
 
-      Map<String, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
+      Map<String, Rule> knownRules = Utils.extractField(managedEngine, "knownRules");
+      assertEquals(knownRules.size(), 1);
+      assertTrue(knownRules.containsKey(identifier.rule()));
+
+      Map<CacheIdentifier, ManagedEngine.StartStopEngine> engines = Utils.extractField(ManagedEngine.class, "engines", managedEngine);
 
       assertEquals(engines.size(), 1);
-      assertTrue(engines.containsKey("rule"));
+      assertTrue(engines.containsKey(identifier));
 
-      var sse = engines.get("rule");
+      var sse = engines.get(identifier);
       ManagedEngine.Status status = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
       assertEquals(ManagedEngine.Status.RUNNING, status);
 
       // Now we can remove the added rule. It will shutdown the engine and remove from the list.
-      managedEngine.removeRule("rule");
+      managedEngine.removeRule(identifier.rule());
 
       BooleanSupplier bs = () -> {
          ManagedEngine.Status s = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
          return s == ManagedEngine.Status.SHUTDOWN;
       };
-      Utils.eventually(() -> "Engine did not shutdown", bs, 5, TimeUnit.SECONDS);
-      verify(cacheServiceMock).stop(any());
-      assertFalse(engines.containsKey("rule"));
+      eventually(() -> "Engine did not shutdown", bs, 5, TimeUnit.SECONDS);
+      assertFalse(engines.containsKey(identifier));
+      assertFalse(knownRules.containsKey(identifier.rule()));
    }
 
    private static final class MockCache implements Cache {

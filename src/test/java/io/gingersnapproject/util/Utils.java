@@ -8,20 +8,20 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
+import io.quarkus.arc.ClientProxy;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 public class Utils {
 
    private Utils() { }
 
-   @SuppressWarnings("unchecked")
    public static <R, O> R extractField(O instance, String field) {
-      return extractField((Class<? super O>) instance.getClass(), field, instance);
+      return extractField(instance.getClass(), field, instance);
    }
 
    @SuppressWarnings("unchecked")
-   public static <R, O> R extractField(Class<O> clazz, String field, O instance) {
-      var value = ReflectionUtils.tryToReadFieldValue(clazz, field, instance);;
+   public static <R, O> R extractField(Class<? extends O> clazz, String field, O instance) {
+      var value = ReflectionUtils.tryToReadFieldValue((Class<O>) clazz, field, unwrap(instance));
       return (R) value.getOrThrow(e ->
             new RuntimeException(String.format("Unable to read field '%s' of %s", field, clazz.getSimpleName()), e));
    }
@@ -64,5 +64,15 @@ public class Utils {
       } catch (Exception e) {
          throw new RuntimeException("Unexpected!", e);
       }
+   }
+
+   private static <T> T unwrap(T instance) {
+      for (Class<?> itf : instance.getClass().getInterfaces()) {
+         if (itf.isAssignableFrom(ClientProxy.class)) {
+            var proxy = (ClientProxy) instance;
+            return (T) proxy.arc_contextualInstance();
+         }
+      }
+      return instance;
    }
 }

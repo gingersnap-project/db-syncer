@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.metrics.CacheServiceAccessRecord;
 import io.gingersnapproject.metrics.DBSyncerMetrics;
 import org.infinispan.client.hotrod.DataFormat;
@@ -16,7 +17,7 @@ import io.gingersnapproject.cdc.event.NotificationManager;
 import io.gingersnapproject.cdc.translation.JsonTranslator;
 
 public class HotRodCacheBackend implements CacheBackend {
-   private final String name;
+   private final CacheIdentifier identifier;
    final RemoteCache<String, String> remoteCache;
    final JsonTranslator<?> keyTranslator;
    final JsonTranslator<?> valueTranslator;
@@ -25,9 +26,9 @@ public class HotRodCacheBackend implements CacheBackend {
    private final DBSyncerMetrics metrics;
    private boolean stopped;
 
-   public HotRodCacheBackend(RemoteCache<String, String> remoteCache, JsonTranslator<?> keyTranslator,
+   public HotRodCacheBackend(CacheIdentifier identifier, RemoteCache<String, String> remoteCache, JsonTranslator<?> keyTranslator,
                              JsonTranslator<?> valueTranslator, NotificationManager eventing, DBSyncerMetrics metrics) {
-      this.name = remoteCache.getName();
+      this.identifier = identifier;
       this.remoteCache = remoteCache.withDataFormat(DataFormat.builder()
             .keyType(MediaType.TEXT_PLAIN).valueType(MediaType.TEXT_PLAIN).build());
       this.keyTranslator = keyTranslator;
@@ -35,10 +36,16 @@ public class HotRodCacheBackend implements CacheBackend {
       this.eventing = eventing;
       this.eventBiConsumer = (ignore, t) -> {
          if (t != null) {
-            this.eventing.backendFailedEvent(name, t);
+            this.eventing.backendFailedEvent(identifier, t);
          }
       };
       this.metrics = metrics;
+   }
+
+   HotRodCacheBackend copy(RemoteCache<String, String> rc) {
+      var o = new HotRodCacheBackend(identifier, rc, keyTranslator, valueTranslator, eventing, metrics);
+      o.stopped = this.stopped;
+      return o;
    }
 
    @Override
@@ -72,14 +79,14 @@ public class HotRodCacheBackend implements CacheBackend {
    @Override
    public void stop() {
       remoteCache.stop();
-      eventing.backendStoppedEvent(name);
+      eventing.backendStoppedEvent(identifier);
       stopped = true;
    }
 
    @Override
    public void start() {
       remoteCache.start();
-      eventing.backendStartedEvent(name, stopped);
+      eventing.backendStartedEvent(identifier, stopped);
       stopped = false;
    }
 
@@ -92,7 +99,7 @@ public class HotRodCacheBackend implements CacheBackend {
          return isRunning();
       } catch (Throwable t) {
          stopped = true;
-         eventing.backendFailedEvent(name, t);
+         eventing.backendFailedEvent(identifier, t);
       }
       return false;
    }
