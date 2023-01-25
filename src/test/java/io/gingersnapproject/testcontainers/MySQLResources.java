@@ -23,6 +23,7 @@ public class MySQLResources extends BaseGingersnapResourceLifecycleManager {
             .withPassword("password")
             .withExposedPorts(MySQLContainer.MYSQL_PORT)
             .withStartupTimeout(Duration.ofSeconds(30))
+            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
             .waitingFor(Wait.forLogMessage(".*mysqld: ready for connections.*", 2))
             .withCopyFileToContainer(MountableFile.forClasspathResource("mysql/setup.sql"), "/docker-entrypoint-initdb.d/setup.sql");
    }

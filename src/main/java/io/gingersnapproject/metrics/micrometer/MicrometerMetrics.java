@@ -7,6 +7,7 @@ import io.gingersnapproject.metrics.DBSyncerMetrics;
 import io.gingersnapproject.metrics.GenericStreamingBeanLookup;
 import io.gingersnapproject.metrics.MySQLStreamingBeanLookup;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -19,7 +20,10 @@ import javax.management.MalformedObjectNameException;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static io.gingersnapproject.metrics.micrometer.TagUtil.CACHE_SERVICE;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.COMPONENT_KEY;
@@ -34,6 +38,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
    private final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
    private final Counter reconnectEvents;
    private final EnumMap<TimerMetrics, Timer> timerMetrics = new EnumMap<>(TimerMetrics.class);
+   private final ConcurrentHashMap<String, RuleMetrics> rulesMetric = new ConcurrentHashMap<>();
 
    public MicrometerMetrics(MeterRegistry registry) {
       this.registry = registry;
@@ -63,7 +68,10 @@ public class MicrometerMetrics implements DBSyncerMetrics {
 
    void unregisterMetrics(@Observes Events.ConnectorStoppedEvent ev) {
       log.info("Unregistering metrics for {}", ev.name());
-      //TODO remove metrics
+      rulesMetric.computeIfPresent(ev.name(), (ruleName, ruleMetrics) -> {
+         ruleMetrics.ids().forEach(registry::remove);
+         return null;
+      });
    }
 
    void onCacheServiceReconnect(@Observes Events.BackendStartedEvent event) {
@@ -74,32 +82,37 @@ public class MicrometerMetrics implements DBSyncerMetrics {
 
    private void registerMysqlConnectorMetrics(String name) {
       //mysql connect has a couple extra metrics that we can expose!
-      MySQLStreamingBeanLookup lookup;
-      try {
-         lookup = new MySQLStreamingBeanLookup(name);
-      } catch (MalformedObjectNameException e) {
-         log.error("Failed to register MySQL metrics for connector {}", name, e);
-         return;
-      }
-      for (MySQLMetrics metric : MySQLMetrics.values()) {
-         metric.registerMetric(name, lookup, registry);
-      }
-      for (StreamingMetrics metric : StreamingMetrics.values()) {
-         metric.registerMetric(name, lookup, registry);
-      }
+      rulesMetric.computeIfAbsent(name, ruleName -> {
+         MySQLStreamingBeanLookup lookup;
+         try {
+            lookup = new MySQLStreamingBeanLookup(ruleName);
+         } catch (MalformedObjectNameException e) {
+            log.error("Failed to register MySQL metrics for connector {}", ruleName, e);
+            return null;
+         }
+         Stream<Meter.Id> ids1 = Arrays.stream(MySQLMetrics.values())
+               .map(metric -> metric.registerMetric(ruleName, lookup, registry));
+         Stream<Meter.Id> ids2 = Arrays.stream(StreamingMetrics.values())
+               .map(metric -> metric.registerMetric(ruleName, lookup, registry));
+         return new RuleMetrics(Stream.concat(ids1, ids2).toList());
+      });
    }
 
    private void registerGenericConnector(String type, String name) {
-      GenericStreamingBeanLookup lookup;
-      try {
-         lookup = new GenericStreamingBeanLookup(type, name);
-      } catch (MalformedObjectNameException e) {
-         log.error("Failed to register {} metrics for connector {}", type, name, e);
-         return;
-      }
-      for (StreamingMetrics metric : StreamingMetrics.values()) {
-         metric.registerMetric(name, lookup, registry);
-      }
+      rulesMetric.computeIfAbsent(name, ruleName -> {
+         GenericStreamingBeanLookup lookup;
+         try {
+            lookup = new GenericStreamingBeanLookup(type, ruleName);
+         } catch (MalformedObjectNameException e) {
+            log.error("Failed to register {} metrics for connector {}", type, ruleName, e);
+            return null;
+         }
+         var ids = Arrays.stream(StreamingMetrics.values())
+               .map(metric -> metric.registerMetric(ruleName, lookup, registry))
+               .toList();
+         return new RuleMetrics(ids);
+      });
+
    }
 
    @Override
@@ -120,4 +133,6 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          (throwable == null ? timeMetrics.get(success) : timeMetrics.get(failed)).record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
       }
    }
+
+   private record RuleMetrics(List<Meter.Id> ids) {}
 }
