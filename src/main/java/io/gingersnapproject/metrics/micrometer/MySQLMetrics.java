@@ -2,6 +2,7 @@ package io.gingersnapproject.metrics.micrometer;
 
 import io.debezium.connector.mysql.MySqlStreamingChangeEventSourceMetricsMXBean;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import java.util.Optional;
@@ -31,14 +32,15 @@ public enum MySQLMetrics {
       this.mapFunction = mapFunction;
    }
 
-   public void registerMetric(String rule, Supplier<? extends MySqlStreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
-      Gauge.builder(metricName, () -> Optional.ofNullable(supplier.get())
+   public Meter.Id registerMetric(String rule, Supplier<? extends MySqlStreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
+      return Gauge.builder(metricName, () -> Optional.ofNullable(supplier.get())
                   .map(mapFunction)
                   .orElse(0))
             .tag(COMPONENT_KEY, DEBEZIUM_CONNECTOR)
             .tag(RULE_KEY, rule)
             .description(description)
-            .register(registry);
+            .register(registry)
+            .getId();
    }
 
    public String metricName() {

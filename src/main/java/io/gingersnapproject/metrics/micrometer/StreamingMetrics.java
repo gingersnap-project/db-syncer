@@ -2,6 +2,7 @@ package io.gingersnapproject.metrics.micrometer;
 
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import java.util.Optional;
@@ -47,14 +48,15 @@ public enum StreamingMetrics {
       this(metricName, description, mappingFunction, 0);
    }
 
-   public void registerMetric(String rule, Supplier<? extends StreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
-      Gauge.builder(metricName, () -> Optional.ofNullable(supplier.get())
+   public Meter.Id registerMetric(String rule, Supplier<? extends StreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
+      return Gauge.builder(metricName, () -> Optional.ofNullable(supplier.get())
                   .map(mappingFunction)
                   .orElse(defaultValue))
             .tag(COMPONENT_KEY, DEBEZIUM_CONNECTOR)
             .tag(RULE_KEY, rule)
             .description(description)
-            .register(registry);
+            .register(registry)
+            .getId();
    }
 
    public String metricName() {
