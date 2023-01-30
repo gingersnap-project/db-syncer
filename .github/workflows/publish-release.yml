@@ -1,0 +1,32 @@
+name: Gingersnap db-syncer - Build and publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+jobs:
+  retrieve-tag:
+    runs-on: ubuntu-latest
+
+    outputs:
+      tag: ${{ steps.vars.outputs.LATEST_TAG }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get latest tag
+        id: vars
+        run: |
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo LATEST_TAG=$LATEST_TAG >> $GITHUB_OUTPUT
+
+
+  publish:
+    uses: ./.github/workflows/publish-image.yaml
+    with:
+      tag: ${{ needs.retrieve-tag.outputs.tag }}

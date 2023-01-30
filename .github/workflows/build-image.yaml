@@ -6,14 +6,24 @@ on:
       git-ref:
         type: string
         default: ${{ github.ref }}
+      tag:
+        type: string
+        default: latest
     outputs:
       image-name:
         description: The name of the created image file
-        value: db-syncer
+        value: ${{ jobs.build.outputs.name }}
+      image-tag:
+        description: The tag of the created image file
+        value: ${{ jobs.build.outputs.tag }}
 
 jobs:
-  build-db-syncer:
+  build:
     runs-on: ubuntu-latest
+
+    outputs:
+      name: ${{ steps.meta.outputs.name }}
+      tag: ${{ steps.meta.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v2
@@ -32,12 +42,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - id: meta
+        run: |
+          echo "name=db-syncer" >> $GITHUB_OUTPUT
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+
       - name: Build Image and push
         uses: docker/build-push-action@v3
         with:
           context: .
           file: src/main/docker/Dockerfile.jvm
-          tags: quay.io/gingersnap/db-syncer:latest
+          tags: quay.io/gingersnap/db-syncer:${{ inputs.tag }}
           outputs: type=docker,dest=/tmp/db-syncer.tar
 
       - name: Upload artifact
