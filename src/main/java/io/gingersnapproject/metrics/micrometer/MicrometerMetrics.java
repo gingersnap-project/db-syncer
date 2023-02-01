@@ -62,6 +62,8 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          case MYSQL -> registerMysqlConnectorMetrics(rule);
          case SQLSERVER -> registerGenericConnector(io.debezium.connector.sqlserver.Module.name(), rule);
          case POSTGRESQL -> registerGenericConnector(io.debezium.connector.postgresql.Module.name(), rule);
+         // TODO -> oracle metrics available in OracleStreamingChangeEventSourceMetricsMXBean
+         case ORACLE ->  registerGenericConnector(io.debezium.connector.oracle.Module.name(), rule);
          default -> log.warn("Unknown database provider: {}", db);
       }
    }

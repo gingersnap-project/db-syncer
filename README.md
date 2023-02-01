@@ -59,14 +59,14 @@ Easily start your Reactive RESTful Web Services
 
 ## MySQL
 1. Deploy DB `kubectl kustomize deploy/mysql | kubectl -n <namespace> apply -f -`
-2. Populate DB `kubectl -n <namespace> exec deployment/mysql -- mysql -uroot -proot < src/main/resources/populate.sql`
+2. Populate DB `kubectl -n <namespace> exec deployment/mysql -- mysql -uroot -proot < src/test/resources/populate.sql`
 3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/mysql 3306:3306`
 4. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager`
 5. Run DB-Syncer locally `quarkus dev`
 
 ## Postgres
 1. Deploy DB `kubectl kustomize deploy/postgres | kubectl -n <namespace> apply -f -`
-2. Populate DB ` kubectl -n mysql exec -it deployment/postgres -- psql -U root -d debeziumdb -a < src/main/resources/populate.sql`
+2. Populate DB ` kubectl -n mysql exec -it deployment/postgres -- psql -U root -d debeziumdb -a < src/test/resources/populate.sql`
 3. Port forward DB endpoint `kubectl -n <namespace> port-forward deployment/postgres 5432:5432`
 4. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager`
 5. Run DB-Syncer `quarkus dev`
@@ -80,11 +80,11 @@ Requirements:
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/mysql/mysql-compose.yaml up` to start mysql exposed on 3306 and adminer on 8090
   Adminer can be looked at via a browser at localhost:8090 as an administration tool. Login is user: root, password: root. You may need to refresh the schema to see the debezium one.
-3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager`
+3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-mysql`
 4. Run `quarkus dev` from the poc base directory.
   This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`
 5. Perform inserts and updates to the database
-  Running `docker exec -i <container id> mysql -uroot -proot < src/main/resources/populate.sql` will execute some operations in the database.
+  Running `docker exec -i <container id> mysql -uroot -proot < src/test/resources/populate.sql` will execute some operations in the database.
   To exit, press q in the terminal running the application, so the offset is flushed.
 
 ## Postgres
@@ -94,11 +94,11 @@ Requirements:
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/postgres/postgres-compose.yaml up` to start Postgres exposed on 5432
    * This will create the database, user, schema, and tables necessary for testing.
-3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager`
+3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-postgresql`
 4. Run `quarkus dev -Dquarkus.profile=pgsql` from the poc base directory.
    * This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005. Our client creates the cache it uses `debezium-cache`.
 5. Perform inserts and updates to the database
-   * Running `docker exec -i <container id> psql -U root -d debeziumdb -a < src/main/resources/populate.sql` will execute some operations in the database.
+   * Running `docker exec -i <container id> psql -U root -d debeziumdb -a < src/test/resources/populate.sql` will execute some operations in the database.
    * To exit, press q in the terminal running the application, so the offset is flushed.
 
 ## SQL Server
@@ -108,7 +108,7 @@ To run with SQL server some additional setup is required.
 1. Make sure docker is running and you have docker-compose available
 2. Run `docker-compose -f deploy/mssql/mssql-compose.yaml up` to start Postgres exposed on 5432
     * This will create the database, user, schema, and tables necessary for testing.
-3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager`
+3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-mssql`
 
 Now is necessary to enable the SQL Server Agent and CDC for the tables:
 
@@ -123,3 +123,17 @@ Now with everything setup:
     * Execute `docker exec -it mssql_tools_1 /bin/bash`
     * Inside the container execute `sqlcmd -S sqlserver -U sa -P 'Password!42' -d debezium`
     * Use T-SQL to issue commands
+
+## Oracle Database
+
+Requirements:
+
+1. Make sure docker is running and you have docker-compose available
+2. Run `docker-compose -f deploy/oracle/oracle-compose.yaml up` to start Oracle Database exposed on 1521
+    * This will create the database, user, schema, and tables necessary for testing.
+3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-oracle`
+4. Run `quarkus dev -Dquarkus.profile=oracle` from the poc base directory.
+    * This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005.
+5. Perform inserts and updates to the database
+    * Running `cat ./src/test/resources/oracle/populate.sql | docker exec -i <container id> sqlplus -S debezium/dbz@XEPDB1` will execute some operations in the database.
+    * To exit, press q in the terminal running the application, so the offset is flushed.
