@@ -6,6 +6,7 @@ import java.util.Set;
 
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
 import io.gingersnapproject.testcontainers.database.MySQL;
+import io.gingersnapproject.testcontainers.database.Oracle;
 import io.gingersnapproject.testcontainers.database.Postgres;
 import io.gingersnapproject.testcontainers.hotrod.CacheManagerContainer;
 import io.gingersnapproject.testcontainers.hotrod.HotRodContainer;
@@ -28,6 +29,7 @@ public class Profiles {
 
    public static Class<? extends DatabaseProvider> databaseProviderClass() {
       if (isProfileActive("postgres")) return Postgres.class;
+      if (isProfileActive("oracle")) return Oracle.class;
       return MySQL.class;
    }
 

@@ -1,0 +1,18 @@
+version: '3.1'
+
+services:
+  oracledb:
+    image: gvenzl/oracle-xe:21-slim
+    restart: always
+    environment:
+      ORACLE_PASSWORD: Password!42
+    ports:
+      - 1521:1521
+    volumes:
+      - ../../src/test/resources/oracle/create-logminer-user.sql:/sql/create-logminer-user.sql
+      - ../../src/test/resources/oracle/create-test-tables.sql:/sql/create-test-tables.sql
+      - ../../src/test/resources/oracle/create-xe-tablespace.sql:/sql/create-xe-tablespace.sql
+      - ../../src/test/resources/oracle/create-xepdb1-tablespace.sql:/sql/create-xepdb1-tablespace.sql
+      - ../../src/test/resources/oracle/enable-archive-mode.sql:/sql/enable-archive-mode.sql
+      - ../../src/test/resources/oracle/enable-database-logging.sql:/sql/enable-database-logging.sql
+      - ../../src/test/resources/oracle/setup.sh:/docker-entrypoint-initdb.d/001_setup.sh

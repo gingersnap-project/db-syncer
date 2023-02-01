@@ -5,6 +5,7 @@ import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_
 import java.util.Properties;
 import java.util.Random;
 
+import io.debezium.connector.oracle.OracleConnector;
 import io.gingersnapproject.cdc.configuration.Connector;
 import io.gingersnapproject.cdc.configuration.Database;
 
@@ -59,7 +60,29 @@ public enum DatabaseProvider {
          properties.setProperty("transforms.filter.condition", "value.source.table == 'customer' && valueSchema.name ==~ " + schemaRegex);
          return properties;
       }
-   };
+   },
+   ORACLE {
+      @Override
+      public Properties databaseProperties(Connector connector, Database database) {
+         Properties properties = new Properties();
+         String databaseName = database.database().orElseThrow(() -> new IllegalStateException("Oracle DB requires database name."));
+         String[] dbNameParts = databaseName.split("\\.");
+         properties.setProperty("connector.class", OracleConnector.class.getCanonicalName());
+         if (dbNameParts.length == 1) {
+            // non CDB installation
+            properties.setProperty("database.dbname", databaseName);
+         } else {
+            // CDB installation
+            properties.setProperty("database.dbname", dbNameParts[0]);
+            properties.setProperty("database.pdb.name", dbNameParts[1]);
+         }
+         properties.setProperty("schema.include.list", connector.schema());
+         properties.setProperty("table.include.list", String.format("%s.%s", connector.schema(), connector.table()));
+         properties.setProperty("log.mining.strategy", "online_catalog");
+         return properties;
+      }
+   }
+   ;
 
    public abstract Properties databaseProperties(Connector connector, Database database);
 }
