@@ -222,7 +222,7 @@ public class ManagedEngineTest {
       }
 
       @Override
-      public String user() {
+      public String username() {
          return "test";
       }
 

@@ -67,7 +67,7 @@ public class EngineWrapper {
       Database database = config.database();
       props.setProperty("database.hostname", database.host());
       props.setProperty("database.port", String.valueOf(database.port()));
-      props.setProperty("database.user", database.user());
+      props.setProperty("database.user", database.username());
       props.setProperty("database.password", database.password());
       props.setProperty("database.server.name", "gingersnap-eager");
       props.setProperty("snapshot.mode", "initial"); // Behavior when offset not available.
