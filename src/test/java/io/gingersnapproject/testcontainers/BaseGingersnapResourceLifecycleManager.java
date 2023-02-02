@@ -74,7 +74,7 @@ public class BaseGingersnapResourceLifecycleManager implements
             "gingersnap.cache.uri", cacheManager.hotRodURI(),
             "gingersnap.database.host", database.getHost(),
             "gingersnap.database.port", Integer.toString(database.getFirstMappedPort()),
-            "gingersnap.database.user", database.getUsername(),
+            "gingersnap.database.username", database.getUsername(),
             "gingersnap.database.password", database.getPassword()
       ));
 
