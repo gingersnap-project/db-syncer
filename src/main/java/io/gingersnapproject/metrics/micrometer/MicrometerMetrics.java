@@ -53,7 +53,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
    void registerMetrics(@Observes Events.ConnectorStartedEvent ev) {
       String rule = ev.identifier().toString();
       DatabaseProvider db = ev.databaseProvider();
-      log.info("Registering metrics for {}", rule);
+      log.info("Registering metrics for {} and connector {}", rule, db);
       if (mBeanServer == null) {
          log.warn("JMX not supported. Metrics for connector {} ({}) are not going to be registered", rule, db);
          return;
@@ -61,7 +61,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
       switch (db) {
          case MYSQL -> registerMysqlConnectorMetrics(rule);
          case SQLSERVER -> registerGenericConnector(io.debezium.connector.sqlserver.Module.name(), rule);
-         case POSTGRESQL -> registerGenericConnector(io.debezium.connector.postgresql.Module.name(), rule);
+         case POSTGRESQL -> registerGenericConnector("postgres", rule);
          // TODO -> oracle metrics available in OracleStreamingChangeEventSourceMetricsMXBean
          case ORACLE ->  registerGenericConnector(io.debezium.connector.oracle.Module.name(), rule);
          default -> log.warn("Unknown database provider: {}", db);
@@ -95,7 +95,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          Stream<Meter.Id> ids1 = Arrays.stream(MySQLMetrics.values())
                .map(metric -> metric.registerMetric(ruleName, lookup, registry));
          Stream<Meter.Id> ids2 = Arrays.stream(StreamingMetrics.values())
-               .map(metric -> metric.registerMetric(ruleName, lookup, registry));
+               .map(metric -> metric.registerMetric(ruleName, "mysql", lookup, registry));
          return new RuleMetrics(Stream.concat(ids1, ids2).toList());
       });
    }
@@ -110,7 +110,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
             return null;
          }
          var ids = Arrays.stream(StreamingMetrics.values())
-               .map(metric -> metric.registerMetric(ruleName, lookup, registry))
+               .map(metric -> metric.registerMetric(ruleName, type, lookup, registry))
                .toList();
          return new RuleMetrics(ids);
       });

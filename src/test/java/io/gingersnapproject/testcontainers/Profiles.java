@@ -73,4 +73,10 @@ public class Profiles {
    public static boolean isProfileActive(String profile) {
       return ACTIVE_PROFILES.contains(profile);
    }
+
+   public static String connectorType() {
+      if (isProfileActive("postgres")) return "postgres";
+      if (isProfileActive("oracle")) return "oracle";
+      return "mysql";
+   }
 }

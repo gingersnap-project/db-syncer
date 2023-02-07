@@ -1,14 +1,19 @@
 package io.gingersnapproject.metrics;
 
-import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
+import java.lang.invoke.MethodHandles;
+import java.lang.management.ManagementFactory;
+import java.util.Hashtable;
+import java.util.function.Supplier;
 
 import javax.management.JMX;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
-import java.util.Hashtable;
-import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
 
 /**
  * Finds the MBean to collect metrics from the connector.
@@ -16,6 +21,8 @@ import java.util.function.Supplier;
  * @param <T> The MBean type.
  */
 abstract class BaseStreamingBeanLookup<T extends StreamingChangeEventSourceMetricsMXBean> implements Supplier<T> {
+
+   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    private final ObjectName objectName;
    private volatile T bean;
@@ -47,6 +54,8 @@ abstract class BaseStreamingBeanLookup<T extends StreamingChangeEventSourceMetri
          }
          if (mBeanServer.isRegistered(objectName)) {
             bean = JMX.newMBeanProxy(mBeanServer, objectName, mbeanClass());
+         } else {
+            log.warn("Failed to find JMX MBean {}. Connector metrics are not available", objectName);
          }
          return bean;
       }
