@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.gingersnapproject.metrics.micrometer.TagUtil.COMPONENT_KEY;
+import static io.gingersnapproject.metrics.micrometer.TagUtil.CONNECTOR_TYPE_KEY;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.DEBEZIUM_CONNECTOR;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.RULE_KEY;
 
@@ -38,6 +39,7 @@ public enum MySQLMetrics {
                   .orElse(0))
             .tag(COMPONENT_KEY, DEBEZIUM_CONNECTOR)
             .tag(RULE_KEY, rule)
+            .tag(CONNECTOR_TYPE_KEY, "mysql")
             .description(description)
             .register(registry)
             .getId();

@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.gingersnapproject.metrics.micrometer.TagUtil.COMPONENT_KEY;
+import static io.gingersnapproject.metrics.micrometer.TagUtil.CONNECTOR_TYPE_KEY;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.DEBEZIUM_CONNECTOR;
 import static io.gingersnapproject.metrics.micrometer.TagUtil.RULE_KEY;
 
@@ -48,12 +49,13 @@ public enum StreamingMetrics {
       this(metricName, description, mappingFunction, 0);
    }
 
-   public Meter.Id registerMetric(String rule, Supplier<? extends StreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
+   public Meter.Id registerMetric(String rule, String connectorType, Supplier<? extends StreamingChangeEventSourceMetricsMXBean> supplier, MeterRegistry registry) {
       return Gauge.builder(metricName, () -> Optional.ofNullable(supplier.get())
                   .map(mappingFunction)
                   .orElse(defaultValue))
             .tag(COMPONENT_KEY, DEBEZIUM_CONNECTOR)
             .tag(RULE_KEY, rule)
+            .tag(CONNECTOR_TYPE_KEY, connectorType)
             .description(description)
             .register(registry)
             .getId();
