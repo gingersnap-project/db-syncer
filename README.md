@@ -132,7 +132,7 @@ Requirements:
 2. Run `docker-compose -f deploy/oracle/oracle-compose.yaml up` to start Oracle Database exposed on 1521
     * This will create the database, user, schema, and tables necessary for testing.
 3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-oracle`
-4. Run `quarkus dev -Dquarkus.profile=oracle` from the poc base directory.
+4. Run `quarkus dev -Dquarkus.profile=oracle+dev` from the poc base directory.
     * This will run with the quarkus endpoint on 8080 and remote JVM debug on 5005.
 5. Perform inserts and updates to the database
     * Running `cat ./src/test/resources/oracle/populate.sql | docker exec -i <container id> sqlplus -S debezium/dbz@XEPDB1` will execute some operations in the database.

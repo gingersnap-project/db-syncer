@@ -1,6 +1,8 @@
 package io.gingersnapproject.testcontainers;
 
 import java.lang.reflect.InvocationTargetException;
+import java.sql.Driver;
+import java.sql.DriverManager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -65,6 +67,7 @@ public class BaseGingersnapResourceLifecycleManager implements
 
       if (!database.isRunning()) database.start();
 
+      installDatabaseDriver(database.getDriverClassName());
       Testcontainers.exposeHostPorts(database.getFirstMappedPort());
       String databaseKind = databaseKind(database.getJdbcUrl());
       cacheManager = createHotRodContainer(databaseKind);
@@ -130,5 +133,15 @@ public class BaseGingersnapResourceLifecycleManager implements
             .withDatabaseUser(database.getUsername())
             .withDatabasePassword(database.getPassword())
             .withRules(rules);
+   }
+
+   private static void installDatabaseDriver(String className) {
+      try {
+         var driverClass = Thread.currentThread().getContextClassLoader().loadClass(className);
+         assert Driver.class.isAssignableFrom(driverClass) : "Class " + className + " not instance of Driver";
+         DriverManager.registerDriver((Driver) driverClass.getDeclaredConstructor().newInstance());
+      } catch (Exception e) {
+         throw new RuntimeException(e);
+      }
    }
 }

@@ -70,7 +70,7 @@ public class MetricsResourceTest {
       if (hasRule) {
          name += "%s=\"%s\",".formatted(
                NAMING_CONVENTION.tagKey(RULE_KEY),
-               NAMING_CONVENTION.tagValue(RULE)
+               NAMING_CONVENTION.tagValue(RULE + "-localhost")
          );
       }
       name += "}";
