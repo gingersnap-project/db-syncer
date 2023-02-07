@@ -42,6 +42,10 @@ public class Profiles {
 
       @Override
       public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+         // We check only class level, to identify the `WithDatabase` annotation.
+         if (context.getTestMethod().isPresent())
+            return ConditionEvaluationResult.enabled("Do not verify for method, only class level");
+
          if (!ProfileManager.getLaunchMode().isDevOrTest())
             return ConditionEvaluationResult.disabled(String.format("No test running for '%s' mode!", ProfileManager.getLaunchMode()));
 
