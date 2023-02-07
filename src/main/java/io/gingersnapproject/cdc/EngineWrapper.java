@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 import io.gingersnapproject.cdc.cache.CacheIdentifier;
 import io.gingersnapproject.cdc.cache.CacheService;
@@ -30,6 +31,7 @@ public class EngineWrapper {
 
    private static final ExecutorService executor = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors() * 2), runnable ->
          new Thread(runnable, "engine"));
+   private static final Pattern PG_SLOT_NAME_PATTERN = Pattern.compile("[^a-zA-Z0-9_]");
    private final CacheIdentifier identifier;
    private final CacheService cacheService;
    private final Configuration config;
@@ -61,6 +63,10 @@ public class EngineWrapper {
       Connector connector = rule.connector();
       // Required property
       props.setProperty("topic.prefix", identifier.toString());
+
+      // Slot name is required by Postgres only.
+      // More info: https://debezium.io/documentation/reference/2.1/connectors/postgresql.html#postgresql-property-slot-name
+      props.setProperty("slot.name", getValidSlotName(identifier));
 
       // Database information
       Database database = config.database();
@@ -133,4 +139,8 @@ public class EngineWrapper {
       return identifier.rule();
    }
 
+   private static String getValidSlotName(CacheIdentifier identifier) {
+      String id = identifier.toString();
+      return PG_SLOT_NAME_PATTERN.matcher(id).replaceAll("_").substring(0, Math.min(id.length(), 63));
+   }
 }
