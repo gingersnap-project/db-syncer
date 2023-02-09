@@ -137,10 +137,6 @@
       <artifactId>quarkus-kubernetes-service-binding</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-grpc</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java-util</artifactId>
       <version>3.11.4</version>
