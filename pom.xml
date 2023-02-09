@@ -12,9 +12,11 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-    <quarkus.platform.version>2.14.3.Final</quarkus.platform.version>
+    <quarkus.platform.version>2.16.2.Final</quarkus.platform.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
+    <!-- use the same antlr version as debezium. Update it when debezium is updated -->
+    <version.antlr>4.8</version.antlr>
     <version.debezium>2.0.0.Final</version.debezium>
     <version.infinispan>14.0.6.Final</version.infinispan>
     <version.oracle.ojdbc11>21.6.0.0</version.oracle.ojdbc11>
@@ -91,6 +93,16 @@
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr4</artifactId>
+      <version>${version.antlr}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr4-runtime</artifactId>
+      <version>${version.antlr}</version>
     </dependency>
     <dependency>
       <groupId>org.infinispan</groupId>
