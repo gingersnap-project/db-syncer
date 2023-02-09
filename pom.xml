@@ -16,7 +16,7 @@
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
     <version.debezium>2.0.0.Final</version.debezium>
-    <version.infinispan>14.0.2.Final</version.infinispan>
+    <version.infinispan>14.0.6.Final</version.infinispan>
     <version.oracle.ojdbc11>21.6.0.0</version.oracle.ojdbc11>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
