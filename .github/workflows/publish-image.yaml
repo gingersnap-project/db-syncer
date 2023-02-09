@@ -11,7 +11,7 @@ jobs:
   image:
     uses: ./.github/workflows/build-image.yaml
     with:
-      tag: ${{ input.tag }}
+      tag: ${{ inputs.tag }}
 
   upload:
     needs: image
@@ -31,5 +31,5 @@ jobs:
       - name: Load and Push image
         # Use same tag value as passed to image job
         run: |
-          docker load --input ${{ needs.image.outputs.image-name }}
+          docker load --input ${{ needs.image.outputs.image-name }}/${{ needs.image.outputs.image-name }}.tar
           docker push quay.io/gingersnap/db-syncer:${{ needs.image.outputs.image-tag }}

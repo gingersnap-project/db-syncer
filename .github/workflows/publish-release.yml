@@ -28,5 +28,6 @@ jobs:
 
   publish:
     uses: ./.github/workflows/publish-image.yaml
+    secrets: inherit
     with:
       tag: ${{ needs.retrieve-tag.outputs.tag }}
