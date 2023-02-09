@@ -93,7 +93,7 @@ public class MetricsResourceTest {
             tags.entrySet().stream()
                   .map(e -> "%s=\"%s\"".formatted(e.getKey(), e.getValue()))
                   .collect(Collectors.joining(",")) +
-      ",}"; // TODO new micrometer version does not have the ',' at the end!
+      "}";
       return name;
    }
 }
