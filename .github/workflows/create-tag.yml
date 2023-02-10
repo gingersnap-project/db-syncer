@@ -8,7 +8,7 @@ on:
         default: main
       repo: 
         type: string
-        default: main
+        default: gingersnap-project/db-syncer
         
       
 env:
