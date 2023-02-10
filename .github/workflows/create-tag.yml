@@ -1,16 +1,18 @@
 name: db-syncer -Create Tag
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       ref:
-        description: "The branch to checkout when creating the image."
-        required: true
-        default: "release_pipeline"
+        type: string
+        default: main
+      repo: 
+        type: string
+        default: main
+        
       
 env:
   GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  
-  release-version: ${{ github.event.inputs.ref }}
 
 jobs:
   tag:
@@ -25,9 +27,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with: 
-          ref: ${{ github.event.inputs.ref }} 
+          ref: ${{ inputs.ref }} 
+          repository: ${{ inputs.repo }}
           
       - name: Tag the release
         run: |
-         git tag -a v${{ env.release-version}} -m "Release db-syncer:: ${{ env.release-version}}"
+         git tag -a v${{ inputs.ref }} -m "Release db-syncer:: ${{ inputs.ref }}"
          git push origin --tags
+
+  publish:
+    uses: ./.github/workflows/publish-image.yaml
+    secrets: inherit
+    with:
+      tag: v${{ inputs.ref }}
+         
