@@ -50,9 +50,9 @@ public class CacheManagerContainer extends HotRodContainer<CacheManagerContainer
       if (rules != null) {
          for (String rule : rules) {
             // The where clause should use the same column the db-syncer uses.
-            withEnv(String.format("gingersnap_rule_%s_select_statement", rule), "select fullname, email from customer where fullname = ?");
-            withEnv(String.format("gingersnap_rule_%s_connector_schema", rule), "debezium");
-            withEnv(String.format("gingersnap_rule_%s_connector_table", rule), "customer");
+            withEnv(String.format("gingersnap_eager_rule_%s_select_statement", rule), "select fullname, email from customer where fullname = ?");
+            withEnv(String.format("gingersnap_eager_rule_%s_connector_schema", rule), "debezium");
+            withEnv(String.format("gingersnap_eager_rule_%s_connector_table", rule), "customer");
          }
       }
 
