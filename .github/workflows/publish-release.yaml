@@ -1,0 +1,44 @@
+name: Gingersnap db-syncer - Create tag and Publish
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: main
+      repo: 
+        type: string
+        default: gingersnap-project/db-syncer
+        
+      
+env:
+  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure Git
+        run: |
+          git config --global user.name "infinispan-qe-bot"
+          git config --global user.email "q*@infinispan.org"
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with: 
+          ref: ${{ inputs.ref }} 
+          repository: ${{ inputs.repo }}
+          
+      - name: Tag the release
+        run: |
+         git tag -a v${{ inputs.ref }} -m "Release db-syncer:: ${{ inputs.ref }}"
+         git push origin --tags
+
+  publish:
+    needs: tag
+    uses: ./.github/workflows/publish-image.yaml
+    secrets: inherit
+    with:
+      tag: v${{ inputs.ref }}
+         
