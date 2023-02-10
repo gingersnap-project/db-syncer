@@ -9,6 +9,9 @@ on:
       repo: 
         type: string
         default: gingersnap-project/db-syncer
+      tag:
+        type: string
+        default: latest
         
       
 env:
@@ -32,7 +35,7 @@ jobs:
           
       - name: Tag the release
         run: |
-         git tag -a v${{ inputs.ref }} -m "Release db-syncer:: ${{ inputs.ref }}"
+         git tag -a v${{ inputs.tag }} -m "Release db-syncer:: ${{ inputs.tag }}"
          git push origin --tags
 
   publish:
@@ -40,5 +43,5 @@ jobs:
     uses: ./.github/workflows/publish-image.yaml
     secrets: inherit
     with:
-      tag: v${{ inputs.ref }}
+      tag: v${{ inputs.tag }}
          
