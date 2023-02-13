@@ -64,7 +64,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          case MYSQL -> registerMysqlConnectorMetrics(rule);
          case SQLSERVER -> registerGenericConnector(io.debezium.connector.sqlserver.Module.name(), rule);
          case POSTGRESQL -> registerGenericConnector("postgres", rule);
-         case ORACLE ->  registerOracleConnectorMetrics(rule);
+         case ORACLE -> registerOracleConnectorMetrics(rule);
          default -> log.warn("Unknown database provider: {}", db);
       }
    }
@@ -93,11 +93,13 @@ public class MicrometerMetrics implements DBSyncerMetrics {
             log.error("Failed to register MySQL metrics for connector {}", ruleName, e);
             return null;
          }
-         Stream<Meter.Id> ids1 = Arrays.stream(MySQLMetrics.values())
+         Stream<Meter.Id> ids1 = Arrays.stream(MySQLGaugeMetrics.values())
                .map(metric -> metric.registerMetric(ruleName, lookup, registry));
-         Stream<Meter.Id> ids2 = Arrays.stream(StreamingMetrics.values())
+         Stream<Meter.Id> ids2 = Arrays.stream(StreamingGaugeMetric.values())
                .map(metric -> metric.registerMetric(ruleName, "mysql", lookup, registry));
-         return new RuleMetrics(Stream.concat(ids1, ids2).toList());
+         Stream<Meter.Id> ids3 = Arrays.stream(StreamingTimeGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, "mysql", lookup, registry));
+         return new RuleMetrics(Stream.of(ids1, ids2, ids3).flatMap(Function.identity()).toList());
       });
    }
 
@@ -115,10 +117,12 @@ public class MicrometerMetrics implements DBSyncerMetrics {
                .map(metric -> metric.registerMetric(ruleName, lookup, registry));
          Stream<Meter.Id> ids2 = Arrays.stream(OracleTimeGaugeMetric.values())
                .map(metric -> metric.registerMetric(ruleName, lookup, registry));
-         Stream<Meter.Id> ids3 = Arrays.stream(StreamingMetrics.values())
+         Stream<Meter.Id> ids3 = Arrays.stream(StreamingGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, "oracle", lookup, registry));
+         Stream<Meter.Id> ids4 = Arrays.stream(StreamingTimeGaugeMetric.values())
                .map(metric -> metric.registerMetric(ruleName, "oracle", lookup, registry));
 
-         return new RuleMetrics(Stream.of(ids1, ids2, ids3).flatMap(Function.identity()).toList());
+         return new RuleMetrics(Stream.of(ids1, ids2, ids3, ids4).flatMap(Function.identity()).toList());
       });
    }
 
@@ -131,10 +135,11 @@ public class MicrometerMetrics implements DBSyncerMetrics {
             log.error("Failed to register {} metrics for connector {}", type, ruleName, e);
             return null;
          }
-         var ids = Arrays.stream(StreamingMetrics.values())
-               .map(metric -> metric.registerMetric(ruleName, type, lookup, registry))
-               .toList();
-         return new RuleMetrics(ids);
+         var ids1 = Arrays.stream(StreamingGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, type, lookup, registry));
+         var ids2 = Arrays.stream(StreamingTimeGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, type, lookup, registry));
+         return new RuleMetrics(Stream.concat(ids1, ids2).toList());
       });
 
    }
@@ -158,5 +163,6 @@ public class MicrometerMetrics implements DBSyncerMetrics {
       }
    }
 
-   private record RuleMetrics(List<Meter.Id> ids) {}
+   private record RuleMetrics(List<Meter.Id> ids) {
+   }
 }
