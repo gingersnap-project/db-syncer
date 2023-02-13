@@ -3,6 +3,12 @@ name: Publish Images
 on:
   workflow_call:
     inputs:
+      ref:
+        type: string
+        default: ${{ github.ref }}
+      repository: 
+        type: string
+        default: ${{ github.repository }}
       tag:
         type: string
         default: latest
@@ -11,6 +17,8 @@ jobs:
   image:
     uses: ./.github/workflows/build-image.yaml
     with:
+      ref: ${{ inputs.ref }}
+      repository: ${{ inputs.repository }}
       tag: ${{ inputs.tag }}
 
   upload:
