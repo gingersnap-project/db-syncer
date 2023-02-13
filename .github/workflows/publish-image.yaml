@@ -3,6 +3,12 @@ name: Publish Images
 on:
   workflow_call:
     inputs:
+      ref:
+        type: string
+        default: main
+      repository: 
+        type: string
+        default: gingersnap-project/db-syncer
       tag:
         type: string
         default: latest

@@ -5,10 +5,10 @@ on:
     inputs:
       ref:
         type: string
-        default: ${{ github.ref }}
+        default: main
       repository:
         type: string
-        default: ${{ github.repository }}
+        default: gingersnap-project/db-syncer
       tag:
         type: string
         default: latest

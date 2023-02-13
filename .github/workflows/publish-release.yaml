@@ -6,7 +6,7 @@ on:
       ref:
         type: string
         default: main
-      repo: 
+      repository: 
         type: string
         default: gingersnap-project/db-syncer
       tag:
@@ -43,5 +43,7 @@ jobs:
     uses: ./.github/workflows/publish-image.yaml
     secrets: inherit
     with:
+      ref: ${{ inputs.ref }}
+      repository: ${{ inputs.repo }}
       tag: v${{ inputs.tag }}
          
