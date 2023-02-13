@@ -5,10 +5,10 @@ on:
     inputs:
       ref:
         type: string
-        default: main
+        default: ${{ github.ref }}
       repository: 
         type: string
-        default: gingersnap-project/db-syncer
+        default: ${{ github.repository }}
       tag:
         type: string
         default: latest
@@ -45,4 +45,4 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       repository: ${{ inputs.repository }}
-      tag: v${{ inputs.tag }}        
+      tag: ${{ inputs.tag }}        
