@@ -1,10 +1,11 @@
 package io.gingersnapproject.metrics;
 
 import io.gingersnapproject.metrics.micrometer.MicrometerMetrics;
-import io.gingersnapproject.metrics.micrometer.MySQLMetrics;
+import io.gingersnapproject.metrics.micrometer.MySQLGaugeMetrics;
 import io.gingersnapproject.metrics.micrometer.OracleGaugeMetric;
 import io.gingersnapproject.metrics.micrometer.OracleTimeGaugeMetric;
-import io.gingersnapproject.metrics.micrometer.StreamingMetrics;
+import io.gingersnapproject.metrics.micrometer.StreamingGaugeMetric;
+import io.gingersnapproject.metrics.micrometer.StreamingTimeGaugeMetric;
 import io.gingersnapproject.metrics.micrometer.TimerMetrics;
 import io.gingersnapproject.testcontainers.Profiles;
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
@@ -38,21 +39,26 @@ public class MetricsResourceTest {
    @Test
    public void testMetricsEndpoint() {
       Stream<String> streamingMetrics = switch (Profiles.connectorType()) {
-         case "mysql" -> Stream.concat(
-               Arrays.stream(StreamingMetrics.values()).map(MetricsResourceTest::toMetricId),
-               Arrays.stream(MySQLMetrics.values()).map(MetricsResourceTest::toMetricId));
+         case "mysql" -> Stream.of(
+                     Arrays.stream(StreamingTimeGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
+                     Arrays.stream(StreamingGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
+                     Arrays.stream(MySQLGaugeMetrics.values()).map(MetricsResourceTest::toMetricId))
+               .flatMap(Function.identity());
          case "oracle" -> Stream.of(
-                     Arrays.stream(StreamingMetrics.values()).map(MetricsResourceTest::toMetricId),
+                     Arrays.stream(StreamingTimeGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
+                     Arrays.stream(StreamingGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
                      Arrays.stream(OracleGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
                      Arrays.stream(OracleTimeGaugeMetric.values()).map(MetricsResourceTest::toMetricId))
                .flatMap(Function.identity());
-         default -> Arrays.stream(StreamingMetrics.values()).map(MetricsResourceTest::toMetricId);
+         default -> Stream.concat(
+               Arrays.stream(StreamingTimeGaugeMetric.values()).map(MetricsResourceTest::toMetricId),
+               Arrays.stream(StreamingGaugeMetric.values()).map(MetricsResourceTest::toMetricId));
       };
       var matcherList = Stream.of(
                   streamingMetrics.map(MetricsResourceTest::connectorMetricMatcher),
                   Stream.of(containsString(metricName(toCounterMetricId(MicrometerMetrics.RECONNECT_METRIC_NAME), CACHE_SERVICE, null, false))),
                   Arrays.stream(TimerMetrics.values()).map(MetricsResourceTest::convertToContainsString))
-            .flatMap(s -> s)
+            .flatMap(Function.identity())
             .toList();
       given()
             .when().get("/q/metrics")
@@ -60,11 +66,16 @@ public class MetricsResourceTest {
             .body(matcherList.get(0), matcherList.subList(1, matcherList.size()).toArray(Matcher[]::new));
    }
 
-   private static String toMetricId(StreamingMetrics metric) {
-      return toGaugeMetricId(metric.metricName(), null);
+   private static String toMetricId(StreamingGaugeMetric metric) {
+      return toGaugeMetricId(metric.metricName(), metric.baseUnit());
    }
 
-   private static String toMetricId(MySQLMetrics metric) {
+   private static String toMetricId(StreamingTimeGaugeMetric metric) {
+      // time gauges are reported in seconds by prometheus
+      return toGaugeMetricId(metric.metricName(), "seconds");
+   }
+
+   private static String toMetricId(MySQLGaugeMetrics metric) {
       return toGaugeMetricId(metric.metricName(), null);
    }
 
