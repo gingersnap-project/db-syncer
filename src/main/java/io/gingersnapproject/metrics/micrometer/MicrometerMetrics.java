@@ -6,6 +6,7 @@ import io.gingersnapproject.metrics.CacheServiceAccessRecord;
 import io.gingersnapproject.metrics.DBSyncerMetrics;
 import io.gingersnapproject.metrics.GenericStreamingBeanLookup;
 import io.gingersnapproject.metrics.MySQLStreamingBeanLookup;
+import io.gingersnapproject.metrics.OracleStreamingBeanLookup;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -23,6 +24,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.gingersnapproject.metrics.micrometer.TagUtil.CACHE_SERVICE;
@@ -62,8 +64,7 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          case MYSQL -> registerMysqlConnectorMetrics(rule);
          case SQLSERVER -> registerGenericConnector(io.debezium.connector.sqlserver.Module.name(), rule);
          case POSTGRESQL -> registerGenericConnector("postgres", rule);
-         // TODO -> oracle metrics available in OracleStreamingChangeEventSourceMetricsMXBean
-         case ORACLE ->  registerGenericConnector(io.debezium.connector.oracle.Module.name(), rule);
+         case ORACLE ->  registerOracleConnectorMetrics(rule);
          default -> log.warn("Unknown database provider: {}", db);
       }
    }
@@ -97,6 +98,27 @@ public class MicrometerMetrics implements DBSyncerMetrics {
          Stream<Meter.Id> ids2 = Arrays.stream(StreamingMetrics.values())
                .map(metric -> metric.registerMetric(ruleName, "mysql", lookup, registry));
          return new RuleMetrics(Stream.concat(ids1, ids2).toList());
+      });
+   }
+
+   private void registerOracleConnectorMetrics(String name) {
+      //oracle connect has a couple extra metrics that we can expose!
+      rulesMetric.computeIfAbsent(name, ruleName -> {
+         OracleStreamingBeanLookup lookup;
+         try {
+            lookup = new OracleStreamingBeanLookup(ruleName);
+         } catch (MalformedObjectNameException e) {
+            log.error("Failed to register Oracle Database metrics for connector {}", ruleName, e);
+            return null;
+         }
+         Stream<Meter.Id> ids1 = Arrays.stream(OracleGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, lookup, registry));
+         Stream<Meter.Id> ids2 = Arrays.stream(OracleTimeGaugeMetric.values())
+               .map(metric -> metric.registerMetric(ruleName, lookup, registry));
+         Stream<Meter.Id> ids3 = Arrays.stream(StreamingMetrics.values())
+               .map(metric -> metric.registerMetric(ruleName, "oracle", lookup, registry));
+
+         return new RuleMetrics(Stream.of(ids1, ids2, ids3).flatMap(Function.identity()).toList());
       });
    }
 
