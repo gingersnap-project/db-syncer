@@ -30,3 +30,10 @@ jobs:
         with:
           name: jdk17-test-results
           path: "**/target/*-reports*/**/TEST-*.xml"
+
+  e2e:
+    needs: jdk17
+    uses: gingersnap-project/e2e/.github/workflows/e2e.yaml@main
+    with:
+      db-syncer-ref: ${{ github.ref }}
+      db-syncer-repository: ${{ github.repository }}
