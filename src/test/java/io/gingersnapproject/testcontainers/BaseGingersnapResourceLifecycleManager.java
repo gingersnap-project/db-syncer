@@ -1,19 +1,28 @@
 package io.gingersnapproject.testcontainers;
 
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import io.gingersnapproject.testcontainers.annotation.WithDatabase;
+import javax.enterprise.event.Observes;
+
+import io.gingersnapproject.cdc.cache.CacheIdentifier;
+import io.gingersnapproject.cdc.event.Events;
 import io.gingersnapproject.testcontainers.annotation.KeyValue;
+import io.gingersnapproject.testcontainers.annotation.WithDatabase;
 import io.gingersnapproject.testcontainers.hotrod.CacheManagerContainer;
 import io.gingersnapproject.testcontainers.hotrod.HotRodContainer;
 import io.gingersnapproject.testcontainers.hotrod.InfinispanContainer;
 
 import io.quarkus.test.common.QuarkusTestResourceConfigurableLifecycleManager;
+import io.quarkus.test.junit.callback.QuarkusTestBeforeClassCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.Testcontainers;
@@ -21,10 +30,10 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.output.OutputFrame;
 
 public class BaseGingersnapResourceLifecycleManager implements
-      QuarkusTestResourceConfigurableLifecycleManager<WithDatabase> {
-
+      QuarkusTestResourceConfigurableLifecycleManager<WithDatabase>, QuarkusTestBeforeClassCallback {
    private static final Logger log = LoggerFactory.getLogger(BaseGingersnapResourceLifecycleManager.class);
    private static final Pattern RULE_NAME_PATTERN = Pattern.compile("^[a-z\\d]+$");
+   private static final Map<CacheIdentifier, CountDownLatch> AUTOMATIC_STARTED_ENGINES = new ConcurrentHashMap<>();
    private HotRodContainer<?> cacheManager;
    private JdbcDatabaseContainer<?> database;
    private final Map<String, String> runtimeProperties = new HashMap<>();
@@ -82,6 +91,8 @@ public class BaseGingersnapResourceLifecycleManager implements
       ));
 
       for (String rule : rules) {
+         CountDownLatch prev = AUTOMATIC_STARTED_ENGINES.put(CacheIdentifier.of(rule, URI.create(cacheManager.hotRodURI())), new CountDownLatch(1));
+         if (prev != null) prev.countDown();
          properties.putAll(Map.of(
                "gingersnap.rule.%s.connector.schema".formatted(rule), "debezium",
                "gingersnap.rule.%s.connector.table".formatted(rule), "customer",
@@ -142,6 +153,29 @@ public class BaseGingersnapResourceLifecycleManager implements
          DriverManager.registerDriver((Driver) driverClass.getDeclaredConstructor().newInstance());
       } catch (Exception e) {
          throw new RuntimeException(e);
+      }
+   }
+
+   void listConnectorStarted(@Observes Events.ConnectorStartedEvent ev) {
+      log.info("Received event for '{}'", ev.identifier());
+      CountDownLatch latch = AUTOMATIC_STARTED_ENGINES.get(ev.identifier());
+      if (latch != null) latch.countDown();
+      else log.info("Could not find latch for '{}'", ev.identifier());
+   }
+
+   @Override
+   public void beforeClass(Class<?> testClass) {
+      var iterator = AUTOMATIC_STARTED_ENGINES.entrySet().iterator();
+      while (iterator.hasNext()) {
+         var entry = iterator.next();
+         CacheIdentifier identifier = entry.getKey();
+         CountDownLatch latch = entry.getValue();
+         log.info("Waiting on connector '{}' to initialize", identifier);
+         try {
+            assert latch.await(25, TimeUnit.SECONDS) : String.format("Engine '%s' connector never started", identifier);
+            log.info("Connector '{}' was initialized!", identifier);
+         } catch (InterruptedException ignore) { }
+         iterator.remove();
       }
    }
 }

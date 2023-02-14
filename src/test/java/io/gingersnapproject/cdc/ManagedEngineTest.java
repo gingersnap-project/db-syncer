@@ -176,7 +176,6 @@ public class ManagedEngineTest {
          if (rule1Id.equals(entry.getKey())) {
             BooleanSupplier bs = () -> {
                ManagedEngine.Status s = Utils.extractField(ManagedEngine.StartStopEngine.class, "status", sse);
-               System.out.println(s);
                return s == ManagedEngine.Status.RETRYING;
             };
             eventually(() -> String.format("Engine '%s' did not enter into retry", entry.getKey()), bs, 10, TimeUnit.SECONDS);
