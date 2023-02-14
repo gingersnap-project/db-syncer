@@ -32,6 +32,7 @@ jobs:
         with: 
           ref: ${{ inputs.ref }} 
           repository: ${{ inputs.repository }}
+          token: ${{ env.GITHUB_TOKEN }}
           
       - name: Tag the release
         run: |
