@@ -48,15 +48,14 @@ public class EventFilterLink extends EventProcessingChain {
     * @return true if accepted, and false otherwise.
     */
    private boolean acceptEvent(Event event) {
-      if (isDdl(event)) return false;
-
-      if (!event.value().has("source") || event.value().at("source").equals(Json.nil()))
-         return false;
-
-      return event.value().at("source").has("table") && !event.value().at("source").at("table").equals(Json.nil());
+      var json = event.value();
+      return !exists(json, "ddl") &&
+              exists(json, "source") &&
+              exists(json.at("source"), "table") &&
+              exists(json, "op");
    }
 
-   private boolean isDdl(Event event) {
-      return event.value().has("ddl") && !event.value().at("ddl").equals(Json.nil());
+   private boolean exists(Json json, String property) {
+      return json.has(property) && !json.at(property).equals(Json.nil());
    }
 }
