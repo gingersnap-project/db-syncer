@@ -106,14 +106,9 @@ Requirements:
 To run with SQL server some additional setup is required.
 
 1. Make sure docker is running and you have docker-compose available
-2. Run `docker-compose -f deploy/mssql/mssql-compose.yaml up` to start Postgres exposed on 5432
+2. Run `docker-compose -f deploy/mssql/mssql-compose.yaml up` to start SQL Server exposed on 1433
     * This will create the database, user, schema, and tables necessary for testing.
 3. Run the cache-manager locally `docker run -it -p 11222:11222 -p 8080:8080 quay.io/gingersnap/cache-manager-mssql`
-
-Now is necessary to enable the SQL Server Agent and CDC for the tables:
-
-1. Run `sh deploy/mssql/after.sh`
-   * This will start the agent and configure CDC for the `customer` table
 
 Now with everything setup:
 
