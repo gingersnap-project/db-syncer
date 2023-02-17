@@ -8,3 +8,4 @@ grant create on database debeziumdb to gingersnap_user;
 grant usage, create on schema debezium to gingersnap_user;
 
 alter table debezium.customer owner to gingersnap_user;
+alter table debezium.customer replica identity FULL;

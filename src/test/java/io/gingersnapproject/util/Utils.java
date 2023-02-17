@@ -44,6 +44,17 @@ public class Utils {
             .orElseThrow(() -> new RuntimeException(String.format("Method '%s' not found", method)));
    }
 
+   public static void eventually(Supplier<String> messageSupplier, Runnable condition, long timeout, TimeUnit timeUnit) {
+      eventually(messageSupplier, () -> {
+         try {
+            condition.run();
+            return true;
+         } catch (Throwable ignore) {
+            return false;
+         }
+      }, timeout, timeUnit);
+   }
+
    public static void eventually(Supplier<String> messageSupplier, BooleanSupplier condition, long timeout, TimeUnit timeUnit) {
       try {
          long timeoutNanos = timeUnit.toNanos(timeout);

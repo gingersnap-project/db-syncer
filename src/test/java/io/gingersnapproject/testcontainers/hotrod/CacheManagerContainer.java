@@ -1,5 +1,8 @@
 package io.gingersnapproject.testcontainers.hotrod;
 
+import java.net.URI;
+
+import io.restassured.response.ValidatableResponse;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.Base58;
 import org.testcontainers.utility.DockerImageName;
@@ -42,20 +45,27 @@ public class CacheManagerContainer extends HotRodContainer<CacheManagerContainer
 
    @Override
    public void start() {
-      withEnv("quarkus_datasource_username", dbUser);
-      withEnv("quarkus_datasource_password", dbPassword);
-      withEnv("quarkus_datasource_reactive_url", databaseUrl);
+      withEnv("quarkus.datasource.username", dbUser);
+      withEnv("quarkus.datasource.password", dbPassword);
+      withEnv("quarkus.datasource.reactive.url", databaseUrl);
 
 
       if (rules != null) {
          for (String rule : rules) {
             // The where clause should use the same column the db-syncer uses.
-            withEnv(String.format("gingersnap_rule_%s_select_statement", rule), "select fullname, email from customer where fullname = ?");
-            withEnv(String.format("gingersnap_rule_%s_connector_schema", rule), "debezium");
-            withEnv(String.format("gingersnap_rule_%s_connector_table", rule), "customer");
+            withEnv("gingersnap.eager-rule.%s.select-statement".formatted(rule), "select fullname, email from debezium.customer where fullname = ?");
+
+            // If cache-manager start using Oracle's approach of uppercase, this needs to be updated.
+            withEnv("gingersnap.eager-rule.%s.connector.schema".formatted(rule), "debezium");
+            withEnv("gingersnap.eager-rule.%s.connector.table".formatted(rule), "customer");
          }
       }
 
       super.start();
+   }
+
+   @Override
+   public ValidatableResponse getById(String rule, String id) {
+      return getById(URI.create(String.format("http://%s:%d/rules/%s/%s", getHost(), getMappedPort(8080), rule, id)));
    }
 }
