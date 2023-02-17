@@ -9,8 +9,11 @@ import io.gingersnapproject.cdc.configuration.Cache;
 import io.quarkus.kubernetes.service.binding.runtime.ServiceBinding;
 import io.quarkus.kubernetes.service.binding.runtime.ServiceBindingConfigSource;
 import io.quarkus.kubernetes.service.binding.runtime.ServiceBindingConverter;
+import org.jboss.logging.Logger;
 
 public class CacheServiceBindingConverter implements ServiceBindingConverter {
+
+   private static final Logger log = Logger.getLogger(DatabaseServiceBindingConverter.class);
 
    @Override
    public Optional<ServiceBindingConfigSource> convert(List<ServiceBinding> serviceBindings) {
@@ -37,6 +40,10 @@ public class CacheServiceBindingConverter implements ServiceBindingConverter {
                   uri = String.format("hotrod://%s:%s", host, port);
                }
                properties.put(Cache.property("uri"), uri);
+
+               if (log.isDebugEnabled()) {
+                   properties.forEach((k, v) -> log.debugf("%s=%s", k, v));
+               }
                return new ServiceBindingConfigSource(name, properties);
             });
    }

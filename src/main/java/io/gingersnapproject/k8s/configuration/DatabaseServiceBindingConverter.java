@@ -52,6 +52,9 @@ public class DatabaseServiceBindingConverter implements ServiceBindingConverter 
             .stream()
             .collect(Collectors.toMap(e -> Database.property(e.getKey()), Map.Entry::getValue));
       properties.put(Database.property("type"), type);
+      if (log.isDebugEnabled()) {
+         properties.forEach((k, v) -> log.debugf("%s=%s", k, v));
+      }
       return Optional.of(new ServiceBindingConfigSource(name, properties));
    }
 }
