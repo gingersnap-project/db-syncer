@@ -6,10 +6,10 @@ import static org.testcontainers.utility.MountableFile.forClasspathResource;
 import java.util.List;
 import java.util.Map;
 
+import io.gingersnapproject.testcontainers.DatabaseProvider;
+
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.OracleContainer;
-
-import io.gingersnapproject.testcontainers.DatabaseProvider;
 
 /**
  * Starts and manages an Oracle Database container.
@@ -22,8 +22,16 @@ public class Oracle implements DatabaseProvider {
 
    @Override
    public JdbcDatabaseContainer<?> createDatabase() {
-      OracleContainer oracle = new OracleContainer(IMAGE)
-            .usingSid() // for setup.sh be able to connect with "sys" username
+      OracleContainer oracle = new OracleContainer(IMAGE) {
+
+         @Override
+         protected String constructUrlForConnection(String queryString) {
+            // We override this so we can define the database in the URL.
+            return String.format("jdbc:oracle:thin:@//%s:%d/%s", getHost(), getOraclePort(), getDatabaseName());
+         }
+      };
+
+      oracle = oracle.usingSid() // for setup.sh be able to connect with "sys" username
             .withPassword("Password!42")
             .withCopyFileToContainer(forClasspathResource("oracle/setup.sh"), "/docker-entrypoint-initdb.d/setup.sh");
       addSqlFilesToContainer(oracle, List.of(

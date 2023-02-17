@@ -56,7 +56,9 @@ public class BatchConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<
                      acc.values().parallelStream()
                            .map(ev ->
                               CompletableFuture.supplyAsync(() -> {
-                                 chain.process(create(ev), new EventContext());
+                                 Event parsed = create(ev);
+                                 log.trace("Processing event {}", parsed);
+                                 chain.process(parsed, new EventContext());
                                  uncheckedCommit(ev, committer);
                                  return null;
                               }, executor))

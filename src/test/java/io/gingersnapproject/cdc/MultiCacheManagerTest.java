@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atMostOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -38,11 +39,13 @@ import io.gingersnapproject.util.Utils;
 
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.mockito.ArgumentCaptor;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -125,7 +128,17 @@ public class MultiCacheManagerTest {
          }
       }, 10, TimeUnit.SECONDS);
 
-      if (!Profiles.isProfileActive("oracle")) verify(notification, never()).connectorFailed(any(), any());
+      ArgumentCaptor<Throwable> throwable = ArgumentCaptor.forClass(Throwable.class);
+      verify(notification, atMostOnce()).connectorFailed(any(), throwable.capture());
+      if (!Profiles.isProfileActive("oracle")) {
+         verify(notification, never()).connectorFailed(any(), any());
+         assertEquals(0, throwable.getAllValues().size());
+      } else {
+         if (!throwable.getAllValues().isEmpty()) {
+            Throwable t = throwable.getValue();
+            assertEquals(ConnectException.class, t.getClass());
+         }
+      }
    }
 
    @Test
@@ -156,7 +169,18 @@ public class MultiCacheManagerTest {
 
       Map<CacheIdentifier, Rule> knownRules = Utils.extractField(ManagedEngine.class, "knownRules", manager);
       assertTrue(knownRules.isEmpty());
-      if (!Profiles.isProfileActive("oracle")) verify(notification, never()).connectorFailed(any(), any());
+
+      ArgumentCaptor<Throwable> throwable = ArgumentCaptor.forClass(Throwable.class);
+      verify(notification, atMostOnce()).connectorFailed(any(), throwable.capture());
+      if (!Profiles.isProfileActive("oracle")) {
+         verify(notification, never()).connectorFailed(any(), any());
+         assertEquals(0, throwable.getAllValues().size());
+      } else {
+         if (!throwable.getAllValues().isEmpty()) {
+            Throwable t = throwable.getValue();
+            assertEquals(ConnectException.class, t.getClass());
+         }
+      }
    }
 
    @Test
