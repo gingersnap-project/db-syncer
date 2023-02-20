@@ -80,6 +80,7 @@ public class EngineWrapper {
       // Additional configuration
       props.setProperty("tombstones.on.delete", "false"); // Emit single event on delete. Doc says it should be true when using Kafka.
       props.setProperty("converter.schemas.enable", "true"); // Include schema in events, we use to retrieve the key.
+      props.setProperty("tasks.max", "1"); // If updated, SQL Server metrics might need update.
 
       String uri = identifier.uri().toString();
       props.setProperty(RemoteOffsetStore.URI_CACHE, uri);
@@ -106,7 +107,7 @@ public class EngineWrapper {
             .using(new DebeziumEngine.ConnectorCallback() {
                @Override
                public void taskStarted() {
-                  eventing.connectorStarted(identifier, config.database().type());
+                  eventing.connectorStarted(identifier, config.database());
                }
 
                @Override

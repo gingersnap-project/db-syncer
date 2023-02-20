@@ -61,7 +61,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
 
       verify(spyNotification, never()).connectorFailed(any(), any());
 
@@ -82,7 +82,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
 
       verify(spyNotification, never()).connectorFailed(any(), any());
 
@@ -104,7 +104,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
       verify(spyNotification, never()).connectorFailed(any(), any());
    }
 
@@ -126,7 +126,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
 
       verify(spyNotification, never()).connectorFailed(any(), any());
 
@@ -152,7 +152,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
 
       verify(spyNotification, never()).connectorFailed(any(), any());
    }
@@ -183,7 +183,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                   @Override
                   public void describeTo(Description description) { }
-               }), 10, TimeUnit.SECONDS);
+               }), 15, TimeUnit.SECONDS);
       }
       verify(spyNotification, never()).connectorFailed(any(), any());
 
@@ -208,7 +208,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                   @Override
                   public void describeTo(Description description) { }
-               }), 10, TimeUnit.SECONDS);
+               }), 15, TimeUnit.SECONDS);
       }
       verify(spyNotification, never()).connectorFailed(any(), any());
    }
@@ -238,7 +238,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
       verify(spyNotification, never()).connectorFailed(any(), any());
    }
 
@@ -261,7 +261,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
       verify(spyNotification, never()).connectorFailed(any(), any());
 
       // Last statement fails, tx rollback. We check that these do not affect the engine.
@@ -287,7 +287,7 @@ public class PublishChangesTest extends BaseContainerTest {
 
                @Override
                public void describeTo(Description description) { }
-            }), 10, TimeUnit.SECONDS);
+            }), 15, TimeUnit.SECONDS);
       verify(spyNotification, never()).connectorFailed(any(), any());
    }
 

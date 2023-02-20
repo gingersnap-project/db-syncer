@@ -54,10 +54,6 @@ public enum DatabaseProvider {
          properties.setProperty(DATABASE_NAMES.name(), databaseName);
          properties.setProperty("table.include.list", String.format("%s.%s", connector.schema(), connector.table()));
          properties.setProperty("database.encrypt", "false");
-
-         // SQL Server has a slightly different naming
-         String schemaRegex = String.format("/.*\\.%s\\.%s\\.%s\\..*/", databaseName, connector.schema(), connector.table());
-         properties.setProperty("transforms.filter.condition", "value.source.table == 'customer' && valueSchema.name ==~ " + schemaRegex);
          return properties;
       }
    },
