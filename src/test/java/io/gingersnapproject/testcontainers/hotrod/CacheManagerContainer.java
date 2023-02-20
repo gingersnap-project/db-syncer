@@ -53,7 +53,7 @@ public class CacheManagerContainer extends HotRodContainer<CacheManagerContainer
       if (rules != null) {
          for (String rule : rules) {
             // The where clause should use the same column the db-syncer uses.
-            withEnv("gingersnap.eager-rule.%s.select-statement".formatted(rule), "select fullname, email from debezium.customer where fullname = ?");
+            withEnv("gingersnap.eager-rule.%s.select-statement".formatted(rule), getSelectStatement());
 
             // If cache-manager start using Oracle's approach of uppercase, this needs to be updated.
             withEnv("gingersnap.eager-rule.%s.connector.schema".formatted(rule), "debezium");
@@ -62,6 +62,15 @@ public class CacheManagerContainer extends HotRodContainer<CacheManagerContainer
       }
 
       super.start();
+   }
+
+   private String getSelectStatement() {
+      return switch (dbKind) {
+         case "postgres" -> "select fullname, email from debezium.customer where fullname = $1";
+         case "mssql" -> "select fullname, email from debezium.customer where fullname = @P1";
+         case "oracle" -> "select FULLNAME, EMAIL from DEBEZIUM.CUSTOMER where FULLNAME = :1";
+         default -> "select fullname, email from debezium.customer where fullname = ?";
+      };
    }
 
    @Override

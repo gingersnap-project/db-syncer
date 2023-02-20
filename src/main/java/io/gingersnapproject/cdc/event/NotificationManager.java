@@ -3,7 +3,7 @@ package io.gingersnapproject.cdc.event;
 import java.net.URI;
 
 import io.gingersnapproject.cdc.cache.CacheIdentifier;
-import io.gingersnapproject.cdc.connector.DatabaseProvider;
+import io.gingersnapproject.cdc.configuration.Database;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
@@ -37,7 +37,7 @@ public class NotificationManager {
       connectorFailedEvent.fire(new Events.ConnectorFailedEvent(identifier, t));
    }
 
-   public void connectorStarted(CacheIdentifier identifier, DatabaseProvider provider) {
+   public void connectorStarted(CacheIdentifier identifier, Database provider) {
       connectorStartedEvent.fire(new Events.ConnectorStartedEvent(identifier, provider));
    }
 

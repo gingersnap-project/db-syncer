@@ -10,6 +10,9 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import io.gingersnapproject.cdc.configuration.Database;
+import io.gingersnapproject.cdc.connector.DatabaseProvider;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,14 +31,22 @@ abstract class BaseStreamingBeanLookup<T extends StreamingChangeEventSourceMetri
    private volatile T bean;
 
    public BaseStreamingBeanLookup(String type, String rule) throws MalformedObjectNameException {
-      objectName = new ObjectName("debezium." + type, jmxTypes(rule));
+      this(type, rule, null);
    }
 
-   private static Hashtable<String, String> jmxTypes(String rule) {
+   public BaseStreamingBeanLookup(String type, String rule, Database database) throws MalformedObjectNameException {
+      objectName = new ObjectName("debezium." + type, jmxTypes(rule, database));
+   }
+
+   private static Hashtable<String, String> jmxTypes(String rule, Database database) {
       var table = new Hashtable<String, String>();
       table.put("context", "streaming");
       table.put("type", "connector-metrics");
       table.put("server", rule);
+      if (database != null && database.type().equals(DatabaseProvider.SQLSERVER)) {
+         table.put("task", "0");
+         database.database().ifPresent(d -> table.put("database", d));
+      }
       return table;
    }
 

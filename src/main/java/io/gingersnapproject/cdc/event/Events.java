@@ -3,7 +3,7 @@ package io.gingersnapproject.cdc.event;
 import java.net.URI;
 
 import io.gingersnapproject.cdc.cache.CacheIdentifier;
-import io.gingersnapproject.cdc.connector.DatabaseProvider;
+import io.gingersnapproject.cdc.configuration.Database;
 
 public class Events {
 
@@ -17,7 +17,7 @@ public class Events {
 
    public record ConnectorFailedEvent(CacheIdentifier identifier, Throwable throwable) { }
 
-   public record ConnectorStartedEvent(CacheIdentifier identifier, DatabaseProvider databaseProvider) { }
+   public record ConnectorStartedEvent(CacheIdentifier identifier, Database database) { }
 
    public record ConnectorStoppedEvent(CacheIdentifier identifier) { }
 

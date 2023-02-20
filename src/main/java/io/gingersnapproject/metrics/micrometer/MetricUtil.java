@@ -13,7 +13,14 @@ public final class MetricUtil {
    }
 
    public static <T> Supplier<Number> getValue(Supplier<? extends T> objSupplier, Function<T, Number> getFunction) {
-      return () -> Optional.of(objSupplier.get()).map(getFunction).orElse(-1);
+      Supplier<? extends T> wrap = () -> {
+         try {
+            return objSupplier.get();
+         } catch (Exception e) {
+            return null;
+         }
+      };
+      return () -> Optional.ofNullable(wrap.get()).map(getFunction).orElse(-1);
    }
 
 }

@@ -143,11 +143,13 @@ public class BaseGingersnapResourceLifecycleManager implements
          return new InfinispanContainer();
       }
 
-      var url = "oracle".equals(dbKind) ?
-            "oracle:thin:@host.testcontainers.internal:%s/%s".formatted(database.getFirstMappedPort(), database.getDatabaseName()) :
-            "%s://host.testcontainers.internal:%s/%s".formatted(dbKind, database.getFirstMappedPort(), database.getDatabaseName());
+      String url = switch (dbKind) {
+         case "oracle" -> "oracle:thin:@host.testcontainers.internal:%s/%s".formatted(database.getFirstMappedPort(), database.getDatabaseName());
+         case "sqlserver" -> "%s://host.testcontainers.internal:%s/debezium".formatted(dbKind, database.getFirstMappedPort());
+         default -> "%s://host.testcontainers.internal:%s/%s".formatted(dbKind, database.getFirstMappedPort(), database.getDatabaseName());
+      };
 
-      return new CacheManagerContainer(dbKind)
+      return new CacheManagerContainer(Profiles.databaseKind())
             .withDatabaseUrl(url)
             .withDatabaseUser(database.getUsername())
             .withDatabasePassword(database.getPassword())

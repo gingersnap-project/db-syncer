@@ -5,6 +5,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
 import java.util.Set;
 
 import io.gingersnapproject.testcontainers.annotation.WithDatabase;
+import io.gingersnapproject.testcontainers.database.MSSQLServer;
 import io.gingersnapproject.testcontainers.database.MySQL;
 import io.gingersnapproject.testcontainers.database.Oracle;
 import io.gingersnapproject.testcontainers.database.Postgres;
@@ -30,6 +31,7 @@ public class Profiles {
    public static Class<? extends DatabaseProvider> databaseProviderClass() {
       if (isProfileActive("postgres")) return Postgres.class;
       if (isProfileActive("oracle")) return Oracle.class;
+      if (isProfileActive("msserver")) return MSSQLServer.class;
       return MySQL.class;
    }
 
@@ -77,6 +79,12 @@ public class Profiles {
    public static String connectorType() {
       if (isProfileActive("postgres")) return "postgres";
       if (isProfileActive("oracle")) return "oracle";
+      if (isProfileActive("msserver")) return "sql_server";
       return "mysql";
+   }
+
+   public static String databaseKind() {
+      if (isProfileActive("msserver")) return "mssql";
+      return connectorType();
    }
 }

@@ -1,6 +1,6 @@
 package io.gingersnapproject.metrics.micrometer;
 
-import io.gingersnapproject.cdc.connector.DatabaseProvider;
+import io.gingersnapproject.cdc.configuration.Database;
 import io.gingersnapproject.cdc.event.Events;
 import io.gingersnapproject.metrics.CacheServiceAccessRecord;
 import io.gingersnapproject.metrics.DBSyncerMetrics;
@@ -54,15 +54,15 @@ public class MicrometerMetrics implements DBSyncerMetrics {
 
    void registerMetrics(@Observes Events.ConnectorStartedEvent ev) {
       String rule = ev.identifier().toString();
-      DatabaseProvider db = ev.databaseProvider();
-      log.info("Registering metrics for {} and connector {}", rule, db);
+      Database db = ev.database();
+      log.info("Registering metrics for {} and connector {}", rule, db.type());
       if (mBeanServer == null) {
          log.warn("JMX not supported. Metrics for connector {} ({}) are not going to be registered", rule, db);
          return;
       }
-      switch (db) {
+      switch (db.type()) {
          case MYSQL -> registerMysqlConnectorMetrics(rule);
-         case SQLSERVER -> registerGenericConnector(io.debezium.connector.sqlserver.Module.name(), rule);
+         case SQLSERVER -> registerGenericConnector("sql_server", rule, db);
          case POSTGRESQL -> registerGenericConnector("postgres", rule);
          case ORACLE -> registerOracleConnectorMetrics(rule);
          default -> log.warn("Unknown database provider: {}", db);
@@ -127,10 +127,14 @@ public class MicrometerMetrics implements DBSyncerMetrics {
    }
 
    private void registerGenericConnector(String type, String name) {
+      registerGenericConnector(type, name, null);
+   }
+
+   private void registerGenericConnector(String type, String name, Database database) {
       rulesMetric.computeIfAbsent(name, ruleName -> {
          GenericStreamingBeanLookup lookup;
          try {
-            lookup = new GenericStreamingBeanLookup(type, ruleName);
+            lookup = new GenericStreamingBeanLookup(type, ruleName, database);
          } catch (MalformedObjectNameException e) {
             log.error("Failed to register {} metrics for connector {}", type, ruleName, e);
             return null;

@@ -187,6 +187,11 @@
       <artifactId>oracle-xe</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mssqlserver</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -275,6 +280,19 @@
               </systemPropertyVariables>
             </configuration>
           </execution>
+          <execution>
+            <id>mssql</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <skip>${skipGingersnapAdditionalTests}</skip>
+              <reportNameSuffix>mssql</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>msserver</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
 
           <!-- Executions for running with another HR server -->
           <execution>
@@ -313,6 +331,21 @@
               <reportNameSuffix>infinispan-oracle</reportNameSuffix>
               <systemPropertyVariables>
                 <quarkus.test.profile>infinispan,oracle</quarkus.test.profile>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <id>infinispan-mssql</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!--<skip>${skipGingersnapAdditionalTests}</skip>-->
+              <!-- MSSQL stores a big JSON in the schema. Needs https://issues.redhat.com/browse/ISPN-14532 to work. -->
+              <skip>true</skip>
+              <reportNameSuffix>infinispan-mssql</reportNameSuffix>
+              <systemPropertyVariables>
+                <quarkus.test.profile>infinispan,msserver</quarkus.test.profile>
               </systemPropertyVariables>
             </configuration>
           </execution>
